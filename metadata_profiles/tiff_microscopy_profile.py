@@ -1,0 +1,26 @@
+# metadata_profiles/tiff_microscopy_profile.py
+
+REMBI_TIFF_MICROSCOPY_PROFILE = {
+    "ImageName": {"label": "Image Name", "unit": None},
+    "AcquisitionTime": {"label": "Acquisition Time", "unit": None},
+    "DimensionX": {"label": "Image Width", "unit": "pixels"},
+    "DimensionY": {"label": "Image Height", "unit": "pixels"},
+    "SizeZ": {"label": "Z Depth", "unit": None},
+    "SizeT": {"label": "Timepoints", "unit": None},
+    "DefaultUnitFormat": {"label": "Unit", "unit": None},
+    "ContourType": {"label": "Contour Type", "unit": None},
+    "NumChannels": {"label": "Number of Channels", "unit": None},
+    "PixelSizeX": {"label": "Pixel Size X", "unit": "µm"},
+    "PixelSizeY": {"label": "Pixel Size Y", "unit": "µm"},
+    "PixelSizeZ": {"label": "Pixel Size Z", "unit": "µm"},
+    "BitDepth": {"label": "Bit Depth", "unit": None},
+    "ObjectiveName": {"label": "Objective", "unit": None},
+    "NA": {"label": "Numerical Aperture", "unit": None},
+    "Magnification": {"label": "Magnification", "unit": "x"},
+    "Channels": {"label": "Channel Names", "unit": None},
+    "MicroscopeName": {"label": "Microscope", "unit": None},
+    "MicroscopeType": {"label": "Microscope Type", "unit": None},
+    "DetectorName": {"label": "Detector", "unit": None},
+    "DetectorModel": {"label": "Detector Model", "unit": None},
+    "LightSource": {"label": "Light Source", "unit": None},
+}
