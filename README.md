@@ -66,17 +66,17 @@ The following metadata fields are extracted (if available) and exported in stand
 
 ### Dependencies
 
-#Open bash chunk
+```bash
 pip install pyqt5 czifile tifffile numpy
-#Close bash chunk
+```
 
 ### Launch the App
 
 Clone the repository and run:
 
-#Open bash chunk
+```bash
 python main.py
-#Close bash chunk
+```
 
 ---
 
