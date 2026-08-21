@@ -92,6 +92,28 @@ STANDARDS_REGISTRY = {
             "tooling if patient-level data is required for your workflow.",
         ],
     },
+    "General / HDF5": {
+        "standard_name": "HDF5 (Hierarchical Data Format, version 5)",
+        "reference_url": "https://www.hdfgroup.org/solutions/hdf5/",
+        "secondary_url": "https://docs.h5py.org/",
+        "secondary_label": "h5py documentation",
+        "covered": [
+            "Container structure: groups, datasets, dimensions, data types, "
+            "compression filters (gzip, szip, lzf, etc.).",
+            "Root-level global attributes (e.g. Conventions, institution).",
+            "Per-dataset attribute key names (up to 5 per dataset).",
+            "Curation risk flags: EXTERNAL_LINK, PROPRIETARY_COMPRESSION, "
+            "NOT_SELF_DESCRIBING.",
+        ],
+        "not_covered": [
+            "Domain-specific semantics (what the datasets represent) — "
+            "HDF5 is a generic container; field meaning depends on the "
+            "scientific community's conventions (e.g. CF Conventions for "
+            "climate/earth science, OME-Zarr for bioimaging).",
+            "Full attribute values per dataset — only key names are listed "
+            "to avoid overwhelming the report.",
+        ],
+    },
     "Astronomy": {
         "standard_name": "FITS (Flexible Image Transport System)",
         "reference_url": "https://fits.gsfc.nasa.gov/fits_standard.html",

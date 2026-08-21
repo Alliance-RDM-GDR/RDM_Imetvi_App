@@ -60,6 +60,23 @@ def parse_tiff_metadata(file_path, application=None):
                     raw_metadata["SoftwareHint"] = "ImageJ-based"
                     text_lines.append("SoftwareHint: ImageJ-based")
 
+            # Detect JPEG compression embedded inside a TIFF container.
+            # TIFF Compression tag values 6 (old-JPEG) and 7 (JPEG) indicate
+            # lossy compression, which is a data integrity risk for scientific
+            # pixel analysis (values are not preserved losslessly).
+            compression_val = raw_metadata.get("Compression")
+            try:
+                compression_int = int(compression_val)
+            except (TypeError, ValueError):
+                compression_int = None
+            if compression_int in (6, 7):
+                raw_metadata["CompressionWarning"] = (
+                    "JPEG compression detected inside TIFF container (lossy). "
+                    "Pixel values may not be preserved exactly — not suitable "
+                    "for quantitative scientific analysis without verification."
+                )
+                text_lines.append(f"⚠ CompressionWarning: {raw_metadata['CompressionWarning']}")
+
     except Exception as e:
         text_lines.append(f"Failed to read TIFF file: {str(e)}")
 

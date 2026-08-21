@@ -150,6 +150,27 @@ def synthetic_dicom(tmp_path):
 
 
 @pytest.fixture
+def synthetic_hdf5(tmp_path):
+    """Creates a minimal HDF5 file with groups, datasets, and root attributes."""
+    import h5py
+
+    file_path = tmp_path / "synthetic.h5"
+    with h5py.File(str(file_path), "w") as f:
+        f.attrs["Conventions"] = "CF-1.8"
+        f.attrs["institution"] = "Test University"
+
+        grp = f.create_group("measurements")
+        ds = grp.create_dataset("image_stack", data=np.zeros((10, 64, 64), dtype=np.float32),
+                                compression="gzip")
+        ds.attrs["units"] = "intensity"
+        ds.attrs["long_name"] = "Fluorescence stack"
+
+        grp.create_dataset("timestamps", data=np.arange(10, dtype=np.float64))
+
+    return str(file_path)
+
+
+@pytest.fixture
 def synthetic_fits(tmp_path):
     """Creates a small FITS file with telescope and WCS header fields."""
     from astropy.io import fits

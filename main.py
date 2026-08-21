@@ -20,6 +20,7 @@ from metadata_parsers.geotiff_parser import parse_geotiff_metadata
 from metadata_parsers.ome_tiff_parser import parse_ome_tiff_metadata
 from metadata_parsers.dicom_parser import parse_dicom_metadata
 from metadata_parsers.fits_parser import parse_fits_metadata
+from metadata_parsers.hdf5_parser import parse_hdf5_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
 from standardizers.jpg_general_standardizer import standardize_jpg_general_metadata
@@ -27,8 +28,10 @@ from standardizers.geotiff_remote_sensing_standardizer import standardize_geotif
 from standardizers.ome_microscopy_standardizer import standardize_ome_microscopy_metadata
 from standardizers.dicom_medical_standardizer import standardize_dicom_medical_metadata
 from standardizers.fits_astronomy_standardizer import standardize_fits_astronomy_metadata
+from standardizers.hdf5_general_standardizer import standardize_hdf5_general_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
+from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 
 # === Format / Context registries ===
@@ -70,6 +73,11 @@ FORMAT_REGISTRY = {
         "parser": parse_fits_metadata,
         "contexts": ["Astronomy"],
     },
+    "HDF5": {
+        "extensions": [".h5", ".hdf5", ".nc4"],
+        "parser": parse_hdf5_metadata,
+        "contexts": ["General / HDF5"],
+    },
 }
 
 CONTEXT_REGISTRY = {
@@ -91,6 +99,9 @@ CONTEXT_REGISTRY = {
     "Astronomy": {
         "standardizer": standardize_fits_astronomy_metadata,
     },
+    "General / HDF5": {
+        "standardizer": standardize_hdf5_general_metadata,
+    },
 }
 
 # Format-specific standardizer overrides (a context can be reached by more
@@ -104,6 +115,7 @@ FORMAT_STANDARDIZERS = {
     "JPG": standardize_jpg_general_metadata,
     "DICOM": standardize_dicom_medical_metadata,
     "FITS": standardize_fits_astronomy_metadata,
+    "HDF5": standardize_hdf5_general_metadata,
 }
 
 ALL_EXTENSIONS = sorted({ext for fmt in FORMAT_REGISTRY.values() for ext in fmt["extensions"]})
@@ -144,6 +156,19 @@ class FolderLoadWorker(QThread):
                 results.append((full_path, text_report, standardized_metadata))
             except Exception as e:
                 print(f"Failed to process {os.path.basename(full_path)}: {e}")
+
+        # Attach curation flags (requires full batch for duplicate/outlier detection)
+        if results:
+            flags_by_path, checksums = compute_curation_flags(results)
+            enriched = []
+            for file_path, text_report, meta in results:
+                flags = flags_by_path.get(file_path, [])
+                meta["_CurationFlags"] = "; ".join(flags) if flags else "OK"
+                md5 = checksums.get(file_path)
+                if md5:
+                    meta["_MD5Checksum"] = md5
+                enriched.append((file_path, text_report, meta))
+            results = enriched
 
         self.finished.emit(results)
 
@@ -316,6 +341,17 @@ class MetadataViewer(QWidget):
         reference = get_reference_summary(selected_app)
         if reference:
             standardized_metadata["_StandardReference"] = reference
+
+        # Curation flags for single-file load (no batch context, so only
+        # CORRUPT and HAS_GPS_DATA can be evaluated; checksum is still computed).
+        flags_by_path, checksums = compute_curation_flags(
+            [(file_path, text_report, standardized_metadata)]
+        )
+        flags = flags_by_path.get(file_path, [])
+        standardized_metadata["_CurationFlags"] = "; ".join(flags) if flags else "OK"
+        md5 = checksums.get(file_path)
+        if md5:
+            standardized_metadata["_MD5Checksum"] = md5
 
         return text_report, standardized_metadata
 
