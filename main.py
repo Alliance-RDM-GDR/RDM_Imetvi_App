@@ -36,6 +36,7 @@ from standardizers.png_general_standardizer import standardize_png_general_metad
 from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
+from utils.sidecar import write_sidecar, sidecar_path_for
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
@@ -260,6 +261,14 @@ class MetadataViewer(QWidget):
         self.write_metadata_btn.setEnabled(False)
         button_layout.addWidget(self.write_metadata_btn)
 
+        self.save_sidecar_btn = QPushButton("Save Sidecar JSON")
+        self.save_sidecar_btn.clicked.connect(self.save_sidecar)
+        self.save_sidecar_btn.setEnabled(False)
+        self.save_sidecar_btn.setToolTip(
+            "Save metadata as a .json file beside the image (same folder, same base name)."
+        )
+        button_layout.addWidget(self.save_sidecar_btn)
+
         self.export_curation_btn = QPushButton("Export Curation Report")
         self.export_curation_btn.clicked.connect(self.export_curation_report)
         self.export_curation_btn.setEnabled(False)
@@ -463,6 +472,7 @@ class MetadataViewer(QWidget):
         self.current_display_metadata = standardized_metadata
         ext = os.path.splitext(file_path)[1].lower()
         self.write_metadata_btn.setEnabled(ext in SUPPORTED_WRITE_EXTENSIONS)
+        self.save_sidecar_btn.setEnabled(bool(file_path))
 
         fname = os.path.basename(file_path)
 
@@ -576,6 +586,7 @@ class MetadataViewer(QWidget):
             self.current_display_file_path = None
             self.current_display_metadata = None
             self.write_metadata_btn.setEnabled(False)
+            self.save_sidecar_btn.setEnabled(False)
             self.raw_metadata_display.clear()
             self.recommended_metadata_display.clear()
             self.raw_metadata_display.append(f"File: {os.path.basename(file_path)}\n")
@@ -766,6 +777,31 @@ class MetadataViewer(QWidget):
             QMessageBox.information(self, "Success", "Curation report saved successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save curation report: {str(e)}")
+
+    # === Sidecar JSON ===
+    def save_sidecar(self):
+        """Writes metadata as a .json sidecar beside the currently displayed image."""
+        if not self.current_display_file_path or not self.current_display_metadata:
+            return
+
+        out_path = sidecar_path_for(self.current_display_file_path)
+
+        if os.path.exists(out_path):
+            confirm = QMessageBox.warning(
+                self,
+                "Save Sidecar JSON",
+                f"A sidecar file already exists:\n{out_path}\n\nOverwrite it?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if confirm != QMessageBox.Yes:
+                return
+
+        try:
+            written = write_sidecar(self.current_display_file_path, self.current_display_metadata)
+            QMessageBox.information(self, "Success", f"Sidecar saved:\n{written}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save sidecar: {str(e)}")
 
     # === Export Functions ===
     def export_as_json(self):

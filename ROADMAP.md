@@ -30,7 +30,7 @@ La lectura ya funciona; falta la escritura.
   o inyección manual del bloque XMP en el JPEG
 - Exponer en el formulario de edición de metadatos (ya existe `open_metadata_editor`)
 
-### A3. Sidecar metadata (`.json` junto al archivo original) [ ]
+### A3. Sidecar metadata (`.json` junto al archivo original) [x]
 En flujos GIS (QGIS, ArcGIS) y repositorios, el estándar es guardar
 un archivo `.json` o `.xml` con el mismo nombre base que la imagen,
 en la misma carpeta.
