@@ -96,7 +96,7 @@ claves técnicas crudas (`OME_SizeX`, `XResolution`).
 - `render_metadata()` en main.py consulta el perfil activo para
   traducir claves antes de mostrarlas
 
-### C2. Vista en pestañas (Raw / Recommended / Curation) [ ]
+### C2. Vista en pestañas (Raw / Recommended / Curation) [x]
 Actualmente dos paneles lado a lado. Con tres categorías de información
 (raw, estandarizado, curaduría) la UI se satura.
 

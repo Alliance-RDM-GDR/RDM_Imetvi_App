@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QFileDialog, QMessageBox,
     QLabel, QComboBox, QProgressDialog, QDialog,
-    QScrollArea, QFormLayout, QLineEdit, QDialogButtonBox
+    QScrollArea, QFormLayout, QLineEdit, QDialogButtonBox,
+    QTabWidget
 )
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 
@@ -254,20 +255,25 @@ class MetadataViewer(QWidget):
 
         layout.addLayout(button_layout)
 
-        # === Metadata display panels ===
-        panel_layout = QHBoxLayout()
+        # === Metadata display — tabbed view ===
+        self.tab_widget = QTabWidget()
 
         self.raw_metadata_display = QTextEdit()
         self.raw_metadata_display.setReadOnly(True)
         self.raw_metadata_display.setPlaceholderText("Raw metadata will appear here")
-        panel_layout.addWidget(self.raw_metadata_display)
+        self.tab_widget.addTab(self.raw_metadata_display, "Raw Metadata")
 
         self.recommended_metadata_display = QTextEdit()
         self.recommended_metadata_display.setReadOnly(True)
-        self.recommended_metadata_display.setPlaceholderText("Recommended metadata will appear here")
-        panel_layout.addWidget(self.recommended_metadata_display)
+        self.recommended_metadata_display.setPlaceholderText("Recommended / standardized fields will appear here")
+        self.tab_widget.addTab(self.recommended_metadata_display, "Recommended Fields")
 
-        layout.addLayout(panel_layout)
+        self.curation_display = QTextEdit()
+        self.curation_display.setReadOnly(True)
+        self.curation_display.setPlaceholderText("Curation flags and integrity info will appear here")
+        self.tab_widget.addTab(self.curation_display, "Curation")
+
+        layout.addWidget(self.tab_widget)
 
         self.setLayout(layout)
 
@@ -446,24 +452,86 @@ class MetadataViewer(QWidget):
         ext = os.path.splitext(file_path)[1].lower()
         self.write_metadata_btn.setEnabled(ext in SUPPORTED_WRITE_EXTENSIONS)
 
-        self.raw_metadata_display.clear()
-        self.recommended_metadata_display.clear()
-        self.raw_metadata_display.append(f"File: {os.path.basename(file_path)}\n")
-        self.recommended_metadata_display.append(f"File: {os.path.basename(file_path)}\n")
+        fname = os.path.basename(file_path)
 
+        # ── Tab 1: Raw Metadata ───────────────────────────────────────────────
+        self.raw_metadata_display.clear()
+        self.raw_metadata_display.append(f"File: {fname}\n")
         self.raw_metadata_display.append(text_report)
 
+        # ── Tab 2: Recommended Fields ─────────────────────────────────────────
+        self.recommended_metadata_display.clear()
+        self.recommended_metadata_display.append(f"File: {fname}\n")
+
+        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference"}
         for key, value in standardized_metadata.items():
+            if key in _CURATION_KEYS:
+                continue
             if key == "Channels" and isinstance(value, list):
                 self.recommended_metadata_display.append("Channels:")
-                for idx, channel_info in enumerate(value, 1):
-                    name = channel_info.get('Name', '')
-                    exc = channel_info.get('ExcitationWavelength', 'nm')
-                    em = channel_info.get('EmissionWavelength', 'nm')
-                    exp = channel_info.get('ExposureTime_sec', 'sec')
-                    self.recommended_metadata_display.append(f"  - Channel {idx}: {name} (Exc: {exc} nm, Em: {em} nm, Exp: {exp} sec)")
+                for idx, ch in enumerate(value, 1):
+                    name = ch.get("Name", "")
+                    exc  = ch.get("ExcitationWavelength", "")
+                    em   = ch.get("EmissionWavelength", "")
+                    exp  = ch.get("ExposureTime_sec", "")
+                    self.recommended_metadata_display.append(
+                        f"  - Channel {idx}: {name} (Exc: {exc} nm, Em: {em} nm, Exp: {exp} sec)"
+                    )
             else:
                 self.recommended_metadata_display.append(f"{key}: {value}")
+
+        # ── Tab 3: Curation ───────────────────────────────────────────────────
+        self.curation_display.clear()
+        self.curation_display.setAcceptRichText(True)
+
+        flags_str  = standardized_metadata.get("_CurationFlags", "")
+        md5        = standardized_metadata.get("_MD5Checksum", "")
+        comp_warn  = standardized_metadata.get("CompressionWarning", "")
+        ref        = standardized_metadata.get("_StandardReference", {})
+
+        # Colour each flag
+        _FLAG_COLOURS = {
+            "DUPLICATE":         "#e74c3c",
+            "HAS_GPS_DATA":      "#e67e22",
+            "DIMENSION_OUTLIER": "#8e44ad",
+            "LOSSY_TIFF":        "#c0392b",
+            "CORRUPT":           "#e74c3c",
+        }
+        flag_parts = []
+        if flags_str and flags_str != "OK":
+            for flag in flags_str.split("; "):
+                colour = _FLAG_COLOURS.get(flag.strip(), "#555")
+                flag_parts.append(
+                    f'<span style="color:{colour}; font-weight:bold;">⚠ {flag}</span>'
+                )
+            flags_html = " &nbsp; ".join(flag_parts)
+        else:
+            flags_html = '<span style="color:#27ae60; font-weight:bold;">✔ OK — no issues detected</span>'
+
+        html = (
+            f"<h3 style='margin-bottom:4px;'>Curation Summary — {fname}</h3>"
+            f"<p><b>Flags:</b> {flags_html}</p>"
+        )
+
+        if md5:
+            html += f"<p><b>MD5 Checksum:</b> <code>{md5}</code></p>"
+
+        if comp_warn:
+            html += (
+                f"<p style='color:#c0392b;'>"
+                f"<b>⚠ Compression Warning:</b> {comp_warn}"
+                f"</p>"
+            )
+
+        if isinstance(ref, dict) and ref.get("Standard"):
+            html += (
+                f"<p><b>Metadata Standard:</b> {ref['Standard']}<br>"
+                f"<b>Reference:</b> <a href='{ref.get('URL','')}' style='color:#2980b9;'>"
+                f"{ref.get('URL','')}</a></p>"
+            )
+
+        self.curation_display.setHtml(html)
+        self.curation_display.setOpenLinks(False)  # prevent accidental navigation
 
     # === Metadata Display ===
     def display_metadata(self, file_path, single_file=False):
@@ -547,13 +615,15 @@ class MetadataViewer(QWidget):
         return edited_metadata
 
     def _apply_edited_metadata(self, edited_metadata):
-        """Propagates an edit so the display panel and pending exports stay
+        """Propagates an edit so all panels and pending exports stay
         consistent with what was actually written to the file."""
         self.current_display_metadata = edited_metadata
 
-        for idx, (path, text_report, _) in enumerate(self.loaded_files):
+        text_report = ""
+        for idx, (path, tr, _) in enumerate(self.loaded_files):
             if path == self.current_display_file_path:
-                self.loaded_files[idx] = (path, text_report, edited_metadata)
+                self.loaded_files[idx] = (path, tr, edited_metadata)
+                text_report = tr
                 break
 
         if self.loaded_files:
@@ -561,12 +631,8 @@ class MetadataViewer(QWidget):
         else:
             self.all_standardized_metadata = [edited_metadata]
 
-        self.recommended_metadata_display.clear()
-        self.recommended_metadata_display.append(
-            f"File: {os.path.basename(self.current_display_file_path)}\n"
-        )
-        for key, value in edited_metadata.items():
-            self.recommended_metadata_display.append(f"{key}: {value}")
+        # Re-render all three tabs using the full render path
+        self.render_metadata(self.current_display_file_path, text_report, edited_metadata)
 
     def write_metadata(self):
         if not self.current_display_file_path or not self.current_display_metadata:
