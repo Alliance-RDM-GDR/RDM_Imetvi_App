@@ -20,7 +20,7 @@ en flujos de ingesta (FRDR, Archivematica, DSpace).
   CurationFlags, Standard, StandardURL
 - Activado sólo si hay archivos cargados (batch o individual)
 
-### A2. Escritura de IPTC/XMP en JPEG [ ]
+### A2. Escritura de IPTC/XMP en JPEG [x]
 Los archivistas de ciencias sociales y humanidades necesitan escribir
 campos IPTC de vuelta al archivo (caption, keywords, rights, credit).
 La lectura ya funciona; falta la escritura.
