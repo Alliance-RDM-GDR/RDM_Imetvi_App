@@ -21,6 +21,7 @@ from metadata_parsers.ome_tiff_parser import parse_ome_tiff_metadata
 from metadata_parsers.dicom_parser import parse_dicom_metadata
 from metadata_parsers.fits_parser import parse_fits_metadata
 from metadata_parsers.hdf5_parser import parse_hdf5_metadata
+from metadata_parsers.png_parser import parse_png_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
 from standardizers.jpg_general_standardizer import standardize_jpg_general_metadata
@@ -29,6 +30,7 @@ from standardizers.ome_microscopy_standardizer import standardize_ome_microscopy
 from standardizers.dicom_medical_standardizer import standardize_dicom_medical_metadata
 from standardizers.fits_astronomy_standardizer import standardize_fits_astronomy_metadata
 from standardizers.hdf5_general_standardizer import standardize_hdf5_general_metadata
+from standardizers.png_general_standardizer import standardize_png_general_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.curation_flags import compute_curation_flags
@@ -78,6 +80,11 @@ FORMAT_REGISTRY = {
         "parser": parse_hdf5_metadata,
         "contexts": ["General / HDF5"],
     },
+    "PNG": {
+        "extensions": [".png"],
+        "parser": parse_png_metadata,
+        "contexts": ["General / EXIF"],
+    },
 }
 
 CONTEXT_REGISTRY = {
@@ -116,6 +123,7 @@ FORMAT_STANDARDIZERS = {
     "DICOM": standardize_dicom_medical_metadata,
     "FITS": standardize_fits_astronomy_metadata,
     "HDF5": standardize_hdf5_general_metadata,
+    "PNG": standardize_png_general_metadata,
 }
 
 ALL_EXTENSIONS = sorted({ext for fmt in FORMAT_REGISTRY.values() for ext in fmt["extensions"]})
@@ -238,6 +246,11 @@ class MetadataViewer(QWidget):
         self.write_metadata_btn.clicked.connect(self.write_metadata)
         self.write_metadata_btn.setEnabled(False)
         button_layout.addWidget(self.write_metadata_btn)
+
+        self.export_curation_btn = QPushButton("Export Curation Report")
+        self.export_curation_btn.clicked.connect(self.export_curation_report)
+        self.export_curation_btn.setEnabled(False)
+        button_layout.addWidget(self.export_curation_btn)
 
         layout.addLayout(button_layout)
 
@@ -420,6 +433,7 @@ class MetadataViewer(QWidget):
 
         self.export_json_btn.setEnabled(bool(self.loaded_files))
         self.export_csv_btn.setEnabled(bool(self.loaded_files))
+        self.export_curation_btn.setEnabled(bool(self.loaded_files))
 
     def select_loaded_file(self, index):
         if 0 <= index < len(self.loaded_files):
@@ -474,6 +488,7 @@ class MetadataViewer(QWidget):
 
         self.export_json_btn.setEnabled(bool(self.all_standardized_metadata))
         self.export_csv_btn.setEnabled(bool(self.all_standardized_metadata))
+        self.export_curation_btn.setEnabled(bool(self.all_standardized_metadata))
 
     # === Metadata Writing ===
     def open_metadata_editor(self, metadata):
@@ -578,6 +593,82 @@ class MetadataViewer(QWidget):
             QMessageBox.information(self, "Success", "Metadata written to file successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to write metadata: {str(e)}")
+
+    # === Curation Report Export ===
+    def export_curation_report(self):
+        """
+        Exports a dedicated curation summary CSV — one row per file, columns
+        for curation flags and key technical properties only.  Compatible with
+        the CUR_Res_CurationTools Inspect_Images report format so curators can
+        combine outputs from both tools.
+        """
+        if not self.all_standardized_metadata:
+            return
+
+        save_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Curation Report", filter="CSV Files (*.csv)"
+        )
+        if not save_path:
+            return
+
+        _CURATION_COLS = [
+            "FileName",
+            "FilePath",
+            "MD5Checksum",
+            "Format",
+            "Application",
+            "DimensionX",
+            "DimensionY",
+            "BitDepth",
+            "ColorSpace",
+            "Compression",
+            "CurationFlags",
+            "Standard",
+            "StandardURL",
+        ]
+
+        # Dimension key aliases across formats
+        _DIM_X = ("DimensionX", "ImageWidth", "Width", "NAXIS1", "Columns")
+        _DIM_Y = ("DimensionY", "ImageLength", "Height", "NAXIS2", "Rows")
+
+        def _pick(meta, keys):
+            for k in keys:
+                if k in meta:
+                    return str(meta[k])
+            return ""
+
+        try:
+            rows = []
+            sources = self.loaded_files if self.loaded_files else [
+                (self.last_file_path, "", self.all_standardized_metadata[0])
+            ]
+            for file_path, _, meta in sources:
+                ref = meta.get("_StandardReference", {})
+                row = {
+                    "FileName": os.path.basename(file_path) if file_path else "",
+                    "FilePath": file_path or "",
+                    "MD5Checksum": meta.get("_MD5Checksum", ""),
+                    "Format": self.format_dropdown.currentText(),
+                    "Application": self.app_dropdown.currentText(),
+                    "DimensionX": _pick(meta, _DIM_X),
+                    "DimensionY": _pick(meta, _DIM_Y),
+                    "BitDepth": meta.get("BitDepth", ""),
+                    "ColorSpace": meta.get("ColorSpace", ""),
+                    "Compression": meta.get("Compression", ""),
+                    "CurationFlags": meta.get("_CurationFlags", ""),
+                    "Standard": ref.get("Standard", "") if isinstance(ref, dict) else "",
+                    "StandardURL": ref.get("URL", "") if isinstance(ref, dict) else "",
+                }
+                rows.append(row)
+
+            with open(save_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=_CURATION_COLS)
+                writer.writeheader()
+                writer.writerows(rows)
+
+            QMessageBox.information(self, "Success", "Curation report saved successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save curation report: {str(e)}")
 
     # === Export Functions ===
     def export_as_json(self):
