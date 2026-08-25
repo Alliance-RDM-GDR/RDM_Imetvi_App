@@ -50,7 +50,7 @@ El MD5 se calcula en cada sesión pero no se persiste.
 
 ## Bloque B — Nuevos formatos
 
-### B1. LIF — Leica Image File [ ]
+### B1. LIF — Leica Image File [x]
 Formato muy común en microscopios Leica (amplia presencia en USask y
 otras instituciones del survey).
 

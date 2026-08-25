@@ -23,6 +23,7 @@ from metadata_parsers.dicom_parser import parse_dicom_metadata
 from metadata_parsers.fits_parser import parse_fits_metadata
 from metadata_parsers.hdf5_parser import parse_hdf5_metadata
 from metadata_parsers.png_parser import parse_png_metadata
+from metadata_parsers.lif_parser import parse_lif_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
 from standardizers.jpg_general_standardizer import standardize_jpg_general_metadata
@@ -32,6 +33,7 @@ from standardizers.dicom_medical_standardizer import standardize_dicom_medical_m
 from standardizers.fits_astronomy_standardizer import standardize_fits_astronomy_metadata
 from standardizers.hdf5_general_standardizer import standardize_hdf5_general_metadata
 from standardizers.png_general_standardizer import standardize_png_general_metadata
+from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.curation_flags import compute_curation_flags
@@ -87,6 +89,11 @@ FORMAT_REGISTRY = {
         "parser": parse_png_metadata,
         "contexts": ["General / EXIF"],
     },
+    "LIF": {
+        "extensions": [".lif"],
+        "parser": parse_lif_metadata,
+        "contexts": ["Microscopy (Leica)"],
+    },
 }
 
 CONTEXT_REGISTRY = {
@@ -111,6 +118,9 @@ CONTEXT_REGISTRY = {
     "General / HDF5": {
         "standardizer": standardize_hdf5_general_metadata,
     },
+    "Microscopy (Leica)": {
+        "standardizer": standardize_lif_microscopy_metadata,
+    },
 }
 
 # Format-specific standardizer overrides (a context can be reached by more
@@ -126,6 +136,7 @@ FORMAT_STANDARDIZERS = {
     "FITS": standardize_fits_astronomy_metadata,
     "HDF5": standardize_hdf5_general_metadata,
     "PNG": standardize_png_general_metadata,
+    "LIF": standardize_lif_microscopy_metadata,
 }
 
 ALL_EXTENSIONS = sorted({ext for fmt in FORMAT_REGISTRY.values() for ext in fmt["extensions"]})

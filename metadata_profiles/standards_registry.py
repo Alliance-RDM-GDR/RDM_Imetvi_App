@@ -92,6 +92,26 @@ STANDARDS_REGISTRY = {
             "tooling if patient-level data is required for your workflow.",
         ],
     },
+    "Microscopy (Leica)": {
+        "standard_name": "REMBI (Recommended Metadata for Biological Images) — Leica LIF",
+        "reference_url": "https://doi.org/10.1038/s41592-021-01166-8",
+        "secondary_url": "https://www.leica-microsystems.com/science-lab/life-science/lif-file-format/",
+        "secondary_label": "Leica — LIF file format overview",
+        "covered": [
+            "Image Acquisition: image name, series count, dimensions (X/Y/Z/T), "
+            "number of channels, pixel size (µm/pixel in X/Y/Z), bit depth per channel.",
+            "Optics: numerical aperture, magnification, objective name, "
+            "digital zoom, pinhole size (from ATLConfocalSettingDefinition block).",
+            "Mosaic: tile count and positions (when present).",
+        ],
+        "not_covered": [
+            "Channel names and excitation/emission wavelengths — stored in a "
+            "separate XML block not yet parsed by readlif; use Fiji/Bio-Formats "
+            "for full channel metadata.",
+            "Acquisition date/time — not consistently embedded in the LIF XML.",
+            "Biosample and Specimen fields — same caveat as REMBI/TIFF above.",
+        ],
+    },
     "General / HDF5": {
         "standard_name": "HDF5 (Hierarchical Data Format, version 5)",
         "reference_url": "https://www.hdfgroup.org/solutions/hdf5/",
