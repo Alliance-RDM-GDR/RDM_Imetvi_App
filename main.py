@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import csv
+from collections import Counter
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QFileDialog, QMessageBox,
@@ -37,6 +38,7 @@ from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.sidecar import write_sidecar, sidecar_path_for
+from utils.integrity import compute_md5, save_checksums, load_checksums, verify_checksums
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
@@ -274,6 +276,22 @@ class MetadataViewer(QWidget):
         self.export_curation_btn.setEnabled(False)
         button_layout.addWidget(self.export_curation_btn)
 
+        self.save_checksums_btn = QPushButton("Save Checksums")
+        self.save_checksums_btn.clicked.connect(self.save_checksums)
+        self.save_checksums_btn.setEnabled(False)
+        self.save_checksums_btn.setToolTip(
+            "Write checksums.json for the loaded files' folder, for later integrity checks."
+        )
+        button_layout.addWidget(self.save_checksums_btn)
+
+        self.verify_integrity_btn = QPushButton("Verify Integrity")
+        self.verify_integrity_btn.clicked.connect(self.verify_integrity)
+        self.verify_integrity_btn.setEnabled(False)
+        self.verify_integrity_btn.setToolTip(
+            "Compare current file checksums against a saved checksums.json."
+        )
+        button_layout.addWidget(self.verify_integrity_btn)
+
         layout.addLayout(button_layout)
 
         # === Metadata display — tabbed view ===
@@ -461,6 +479,8 @@ class MetadataViewer(QWidget):
         self.export_json_btn.setEnabled(bool(self.loaded_files))
         self.export_csv_btn.setEnabled(bool(self.loaded_files))
         self.export_curation_btn.setEnabled(bool(self.loaded_files))
+        self.save_checksums_btn.setEnabled(bool(self.loaded_files))
+        self.verify_integrity_btn.setEnabled(bool(self.loaded_files))
 
     def select_loaded_file(self, index):
         if 0 <= index < len(self.loaded_files):
@@ -599,6 +619,8 @@ class MetadataViewer(QWidget):
         self.export_json_btn.setEnabled(bool(self.all_standardized_metadata))
         self.export_csv_btn.setEnabled(bool(self.all_standardized_metadata))
         self.export_curation_btn.setEnabled(bool(self.all_standardized_metadata))
+        self.save_checksums_btn.setEnabled(bool(self.all_standardized_metadata))
+        self.verify_integrity_btn.setEnabled(bool(self.all_standardized_metadata))
 
     # === Metadata Writing ===
     def open_metadata_editor(self, metadata):
@@ -777,6 +799,88 @@ class MetadataViewer(QWidget):
             QMessageBox.information(self, "Success", "Curation report saved successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save curation report: {str(e)}")
+
+    # === Integrity Verification ===
+    def _current_batch_sources(self):
+        """Returns the (file_path, _, meta) list backing the loaded batch,
+        falling back to the single displayed file when nothing was batch-loaded."""
+        if self.loaded_files:
+            return self.loaded_files
+        if self.current_display_file_path and self.current_display_metadata:
+            return [(self.current_display_file_path, "", self.current_display_metadata)]
+        return []
+
+    def save_checksums(self):
+        sources = self._current_batch_sources()
+        if not sources:
+            return
+
+        folder = os.path.dirname(sources[0][0])
+        checksums = {}
+        for file_path, _, meta in sources:
+            md5 = meta.get("_MD5Checksum") or compute_md5(file_path)
+            if md5:
+                checksums[os.path.basename(file_path)] = md5
+
+        try:
+            out_path = save_checksums(folder, checksums)
+            QMessageBox.information(
+                self, "Success",
+                f"Checksums saved for {len(checksums)} file(s):\n{out_path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save checksums: {str(e)}")
+
+    def verify_integrity(self):
+        sources = self._current_batch_sources()
+        if not sources:
+            return
+
+        folder = os.path.dirname(sources[0][0])
+        stored = load_checksums(folder)
+        if stored is None:
+            QMessageBox.information(
+                self, "No Checksums Found",
+                f"No checksums.json found in this folder.\n"
+                "Use 'Save Checksums' first to create a baseline."
+            )
+            return
+
+        current = {}
+        for file_path, _, meta in sources:
+            md5 = meta.get("_MD5Checksum") or compute_md5(file_path)
+            current[os.path.basename(file_path)] = md5
+
+        status_by_filename = verify_checksums(stored, current)
+
+        counts = Counter(status_by_filename.values())
+        lines = [
+            f"OK: {counts.get('OK', 0)}   "
+            f"MODIFIED: {counts.get('MODIFIED', 0)}   "
+            f"MISSING: {counts.get('MISSING', 0)}   "
+            f"NEW: {counts.get('NEW', 0)}",
+            "",
+        ]
+        for name, status in sorted(status_by_filename.items()):
+            if status != "OK":
+                lines.append(f"[{status}] {name}")
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Integrity Verification Result")
+        dialog.setMinimumSize(480, 360)
+        dialog_layout = QVBoxLayout()
+
+        result_display = QTextEdit()
+        result_display.setReadOnly(True)
+        result_display.setPlainText("\n".join(lines))
+        dialog_layout.addWidget(result_display)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        dialog_layout.addWidget(close_btn)
+
+        dialog.setLayout(dialog_layout)
+        dialog.exec_()
 
     # === Sidecar JSON ===
     def save_sidecar(self):

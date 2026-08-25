@@ -39,7 +39,7 @@ en la misma carpeta.
 - Genera `<nombre_imagen>.json` en la misma carpeta que el archivo fuente
 - Formato: JSON estandarizado (mismos campos que el Export JSON actual)
 
-### A4. Verificación de integridad entre sesiones [ ]
+### A4. Verificación de integridad entre sesiones [x]
 El MD5 se calcula en cada sesión pero no se persiste.
 
 - Al exportar un batch, ofrecer guardar `checksums.json` en la misma carpeta
