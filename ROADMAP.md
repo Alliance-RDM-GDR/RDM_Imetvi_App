@@ -87,7 +87,7 @@ convenciones CF.
 
 ## Bloque C — Mejoras de UI / UX
 
-### C1. Etiquetas legibles con unidades en panel Recommended [ ]
+### C1. Etiquetas legibles con unidades en panel Recommended [x]
 Los perfiles de metadatos existen pero el panel sigue mostrando
 claves técnicas crudas (`OME_SizeX`, `XResolution`).
 

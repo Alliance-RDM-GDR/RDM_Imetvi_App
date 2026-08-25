@@ -36,6 +36,7 @@ from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
+from metadata_profiles.profile_registry import get_profile, format_label
 
 # === Format / Context registries ===
 # Each format declares which extensions it handles, its parser, and which
@@ -464,21 +465,40 @@ class MetadataViewer(QWidget):
         self.recommended_metadata_display.append(f"File: {fname}\n")
 
         _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference"}
+        active_profile = get_profile(self.app_dropdown.currentText())
+
         for key, value in standardized_metadata.items():
             if key in _CURATION_KEYS:
                 continue
+
+            display_key = format_label(key, active_profile)
+
             if key == "Channels" and isinstance(value, list):
-                self.recommended_metadata_display.append("Channels:")
+                self.recommended_metadata_display.append(f"{display_key}:")
                 for idx, ch in enumerate(value, 1):
                     name = ch.get("Name", "")
                     exc  = ch.get("ExcitationWavelength", "")
                     em   = ch.get("EmissionWavelength", "")
                     exp  = ch.get("ExposureTime_sec", "")
                     self.recommended_metadata_display.append(
-                        f"  - Channel {idx}: {name} (Exc: {exc} nm, Em: {em} nm, Exp: {exp} sec)"
+                        f"  - Channel {idx}: {name}"
+                        + (f"  |  Exc: {exc} nm" if exc else "")
+                        + (f"  |  Em: {em} nm" if em else "")
+                        + (f"  |  Exp: {exp} sec" if exp else "")
+                    )
+            elif key == "Datasets" and isinstance(value, list):
+                self.recommended_metadata_display.append(f"{display_key}:")
+                for obj in value:
+                    risk = f"  ⚠ {obj['Risk']}" if obj.get("Risk") else ""
+                    self.recommended_metadata_display.append(
+                        f"  [{obj.get('Type','?')}] {obj.get('Path','')} | "
+                        f"Dims: {obj.get('Dimensions','—')} | "
+                        f"Type: {obj.get('DataType','—')} | "
+                        f"Compression: {obj.get('Compression','—')}"
+                        f"{risk}"
                     )
             else:
-                self.recommended_metadata_display.append(f"{key}: {value}")
+                self.recommended_metadata_display.append(f"{display_key}:  {value}")
 
         # ── Tab 3: Curation ───────────────────────────────────────────────────
         self.curation_display.clear()
