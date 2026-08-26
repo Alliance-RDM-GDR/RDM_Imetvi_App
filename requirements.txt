@@ -10,4 +10,5 @@ iptcinfo3>=2.1
 pydicom>=2.4
 astropy>=5.3
 readlif>=0.6.6
+netCDF4>=1.6
 pytest>=7.4

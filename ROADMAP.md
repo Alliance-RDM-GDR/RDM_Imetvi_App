@@ -71,7 +71,7 @@ El formato más simple de agregar; Pillow ya está instalado.
 - Standardizer: `standardizers/png_general_standardizer.py`
 - Extender `utils/metadata_writer.py` con escritura de chunks de texto PNG
 
-### B3. NetCDF con CF Conventions [ ]
+### B3. NetCDF con CF Conventions [x]
 Datos de teledetección atmosférica, oceanografía y climatología.
 El HDF5 parser ya cubre `.nc4` estructuralmente pero no interpreta
 convenciones CF.

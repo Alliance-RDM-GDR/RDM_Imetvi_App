@@ -134,6 +134,28 @@ STANDARDS_REGISTRY = {
             "to avoid overwhelming the report.",
         ],
     },
+    "Remote Sensing (NetCDF)": {
+        "standard_name": "ISO 19115 (Geographic Information — Metadata) via CF Conventions",
+        "reference_url": "https://www.iso.org/standard/53798.html",
+        "secondary_url": "https://cfconventions.org/",
+        "secondary_label": "CF Conventions for Climate and Forecast metadata",
+        "covered": [
+            "Global attributes: Conventions version, institution, title, "
+            "processing history, source.",
+            "Dimensions and variable inventory: name, shape, data type, "
+            "units, long_name, standard_name.",
+            "Coordinate variables (lat/lon/time/depth/level) when present "
+            "under CF-conventional names.",
+        ],
+        "not_covered": [
+            "Spatial reference details (CRS, bounding box, pixel resolution) "
+            "as reported for GeoTIFF — NetCDF stores these as grid_mapping "
+            "variables and coordinate values rather than fixed tags; not yet "
+            "parsed into a structured CRS/BoundingBox field.",
+            "Lineage/provenance and distribution fields beyond the free-text "
+            "'history' and 'source' global attributes.",
+        ],
+    },
     "Astronomy": {
         "standard_name": "FITS (Flexible Image Transport System)",
         "reference_url": "https://fits.gsfc.nasa.gov/fits_standard.html",

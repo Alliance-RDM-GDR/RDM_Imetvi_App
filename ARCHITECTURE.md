@@ -124,12 +124,15 @@ Loading a file:
 | FITS | `.fits .fit` | Astronomy | `fits_parser.py` | `fits_astronomy_standardizer.py` |
 | HDF5 | `.h5 .hdf5 .nc4` | General / HDF5 | `hdf5_parser.py` | `hdf5_general_standardizer.py` |
 | LIF | `.lif` | Microscopy (Leica) | `lif_parser.py` | `lif_microscopy_standardizer.py` |
+| NetCDF | `.nc .nc4` | Remote Sensing (NetCDF) | `netcdf_parser.py` | `netcdf_remote_sensing_standardizer.py` |
 
-Three formats share the `.tif`/`.tiff` extension (TIFF, OME-TIFF, GeoTIFF) —
-the format dropdown lets the user pick which interpretation applies; the
-app does not try to auto-detect OME-XML or GeoTIFF tags to switch formats
+Three formats share the `.tif`/`.tiff` extension (TIFF, OME-TIFF, GeoTIFF),
+and HDF5/NetCDF both cover `.nc4` (NetCDF4 files are HDF5-backed) — the
+format dropdown lets the user pick which interpretation applies; the app
+does not try to auto-detect OME-XML or GeoTIFF tags to switch formats
 automatically (GeoTIFF parsing does fall back to plain TIFF if no CRS is
-found, see `geotiff_parser.py`).
+found, see `geotiff_parser.py`; HDF5 parsing reports .nc4 structurally
+without interpreting CF semantics, which is what the NetCDF parser adds).
 
 ---
 

@@ -25,6 +25,7 @@ from metadata_parsers.fits_parser import parse_fits_metadata
 from metadata_parsers.hdf5_parser import parse_hdf5_metadata
 from metadata_parsers.png_parser import parse_png_metadata
 from metadata_parsers.lif_parser import parse_lif_metadata
+from metadata_parsers.netcdf_parser import parse_netcdf_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
 from standardizers.jpg_general_standardizer import standardize_jpg_general_metadata
@@ -35,6 +36,7 @@ from standardizers.fits_astronomy_standardizer import standardize_fits_astronomy
 from standardizers.hdf5_general_standardizer import standardize_hdf5_general_metadata
 from standardizers.png_general_standardizer import standardize_png_general_metadata
 from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
+from standardizers.netcdf_remote_sensing_standardizer import standardize_netcdf_remote_sensing_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.sidecar import write_sidecar, sidecar_path_for
@@ -97,6 +99,11 @@ FORMAT_REGISTRY = {
         "parser": parse_lif_metadata,
         "contexts": ["Microscopy (Leica)"],
     },
+    "NetCDF": {
+        "extensions": [".nc", ".nc4"],
+        "parser": parse_netcdf_metadata,
+        "contexts": ["Remote Sensing (NetCDF)"],
+    },
 }
 
 CONTEXT_REGISTRY = {
@@ -124,6 +131,9 @@ CONTEXT_REGISTRY = {
     "Microscopy (Leica)": {
         "standardizer": standardize_lif_microscopy_metadata,
     },
+    "Remote Sensing (NetCDF)": {
+        "standardizer": standardize_netcdf_remote_sensing_metadata,
+    },
 }
 
 # Format-specific standardizer overrides (a context can be reached by more
@@ -140,6 +150,7 @@ FORMAT_STANDARDIZERS = {
     "HDF5": standardize_hdf5_general_metadata,
     "PNG": standardize_png_general_metadata,
     "LIF": standardize_lif_microscopy_metadata,
+    "NetCDF": standardize_netcdf_remote_sensing_metadata,
 }
 
 ALL_EXTENSIONS = sorted({ext for fmt in FORMAT_REGISTRY.values() for ext in fmt["extensions"]})

@@ -7,6 +7,30 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-25 — NetCDF / CF Conventions support (B3)
+
+- Added `metadata_parsers/netcdf_parser.py` (via `netCDF4`),
+  `standardizers/netcdf_remote_sensing_standardizer.py`, and
+  `metadata_profiles/netcdf_remote_sensing_profile.py`.
+- Extracts CF global attributes (`Conventions`, `institution`, `title`,
+  `history`, `source`), the dimension inventory, and per-variable CF
+  attributes (`units`, `long_name`, `standard_name`), detecting common
+  coordinate variables (lat/lon/time/depth/level).
+- Registered as a new `Remote Sensing (NetCDF)` context — kept separate
+  from GeoTIFF's `Remote Sensing` context because NetCDF exposes spatial
+  reference as coordinate variables rather than a fixed CRS/BoundingBox
+  tag, so the field sets genuinely differ even though both target ISO
+  19115.
+- `.nc4` is now claimed by both `HDF5` and `NetCDF` in `FORMAT_REGISTRY`
+  (NetCDF4 files are HDF5-backed) — same pattern as TIFF/OME-TIFF/GeoTIFF
+  sharing `.tif`/`.tiff`; the format dropdown disambiguates. The HDF5
+  parser still reports `.nc4` structurally (groups/datasets/compression)
+  without CF semantics; the NetCDF parser is what interprets those.
+- Unlike LIF, `netCDF4` can write files, so tests use real synthetic `.nc`
+  fixtures rather than mocks — 8 new tests
+  (`tests/test_netcdf_parser.py`).
+- Added `netCDF4>=1.6` to `requirements.txt`.
+
 ## 2026-08-25 — Cross-session integrity verification (A4)
 
 - Added `utils/integrity.py`: `compute_md5()`, `save_checksums()` /

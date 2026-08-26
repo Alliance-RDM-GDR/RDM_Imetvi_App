@@ -11,6 +11,7 @@ from metadata_profiles.jpg_general_profile import JPG_GENERAL_PROFILE
 from metadata_profiles.dicom_medical_profile import DICOM_MEDICAL_PROFILE
 from metadata_profiles.fits_astronomy_profile import FITS_ASTRONOMY_PROFILE
 from metadata_profiles.lif_microscopy_profile import LIF_MICROSCOPY_PROFILE
+from metadata_profiles.netcdf_remote_sensing_profile import NETCDF_REMOTE_SENSING_PROFILE
 
 # HDF5 and PNG profiles are compact enough to define inline here.
 HDF5_GENERAL_PROFILE = {
@@ -55,6 +56,7 @@ PROFILE_REGISTRY = {
     "Microscopy (OME)":     OME_MICROSCOPY_PROFILE,
     "Microscopy (Leica)":   LIF_MICROSCOPY_PROFILE,
     "Remote Sensing":       GEOTIFF_REMOTE_SENSING_PROFILE,
+    "Remote Sensing (NetCDF)": NETCDF_REMOTE_SENSING_PROFILE,
     "General / EXIF":       JPG_GENERAL_PROFILE,
     "Medical Imaging":      DICOM_MEDICAL_PROFILE,
     "Astronomy":            FITS_ASTRONOMY_PROFILE,

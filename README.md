@@ -26,10 +26,11 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   | FITS | `.fits` `.fit` | FITS / WCS (astronomy) |
   | HDF5 | `.h5` `.hdf5` `.nc4` | Generic container inspection |
   | LIF (Leica) | `.lif` | REMBI (microscopy) |
+  | NetCDF | `.nc` `.nc4` | ISO 19115 via CF Conventions |
 
   Formats sharing an extension (TIFF / OME-TIFF / GeoTIFF all use
-  `.tif`/`.tiff`) are selected explicitly via the format dropdown, which
-  auto-suggests a match on load.
+  `.tif`/`.tiff`; HDF5 / NetCDF both cover `.nc4`) are selected explicitly
+  via the format dropdown, which auto-suggests a match on load.
 
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).
