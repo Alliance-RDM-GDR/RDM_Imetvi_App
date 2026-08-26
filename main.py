@@ -46,6 +46,7 @@ from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
+from i18n import tr, set_language, get_language, LANGUAGES
 
 # === Format / Context registries ===
 # Each format declares which extensions it handles, its parser, and which
@@ -213,7 +214,6 @@ class FolderLoadWorker(QThread):
 class MetadataViewer(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Image Metadata Viewer")
         self.setGeometry(100, 100, 1000, 700)
 
         layout = QVBoxLayout()
@@ -221,29 +221,39 @@ class MetadataViewer(QWidget):
         # === Top layout ===
         top_layout = QHBoxLayout()
 
-        self.format_label = QLabel("Select Format:")
+        self.format_label = QLabel()
         self.format_dropdown = QComboBox()
         self.format_dropdown.addItems(list(FORMAT_REGISTRY.keys()))
         self.format_dropdown.currentTextChanged.connect(self.on_format_changed)
         top_layout.addWidget(self.format_label)
         top_layout.addWidget(self.format_dropdown)
 
-        self.app_label = QLabel("Select Application:")
+        self.app_label = QLabel()
         self.app_dropdown = QComboBox()
         top_layout.addWidget(self.app_label)
         top_layout.addWidget(self.app_dropdown)
 
-        self.standards_info_btn = QPushButton("Metadata Standard Info")
+        self.standards_info_btn = QPushButton()
         self.standards_info_btn.clicked.connect(self.show_standards_info)
         top_layout.addWidget(self.standards_info_btn)
 
-        self.file_selector_label = QLabel("Select File:")
+        self.file_selector_label = QLabel()
         self.file_selector_dropdown = QComboBox()
         self.file_selector_dropdown.currentIndexChanged.connect(self.select_loaded_file)
         self.file_selector_label.hide()
         self.file_selector_dropdown.hide()
         top_layout.addWidget(self.file_selector_label)
         top_layout.addWidget(self.file_selector_dropdown)
+
+        top_layout.addStretch()
+
+        self.language_label = QLabel()
+        self.language_dropdown = QComboBox()
+        self.language_dropdown.addItems(list(LANGUAGES.keys()))
+        self.language_dropdown.setCurrentText(get_language())
+        self.language_dropdown.currentTextChanged.connect(self.on_language_changed)
+        top_layout.addWidget(self.language_label)
+        top_layout.addWidget(self.language_dropdown)
 
         layout.addLayout(top_layout)
 
@@ -259,92 +269,83 @@ class MetadataViewer(QWidget):
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
 
-        file_group = QGroupBox("File")
+        self.file_group = QGroupBox()
         file_group_layout = QVBoxLayout()
 
-        self.load_file_btn = QPushButton("Load File")
+        self.load_file_btn = QPushButton()
         self.load_file_btn.clicked.connect(self.load_file)
         file_group_layout.addWidget(self.load_file_btn)
 
-        self.load_folder_btn = QPushButton("Load Folder")
+        self.load_folder_btn = QPushButton()
         self.load_folder_btn.clicked.connect(self.load_folder)
         file_group_layout.addWidget(self.load_folder_btn)
 
-        file_group.setLayout(file_group_layout)
-        sidebar_layout.addWidget(file_group)
+        self.file_group.setLayout(file_group_layout)
+        sidebar_layout.addWidget(self.file_group)
 
-        export_group = QGroupBox("Export")
+        self.export_group = QGroupBox()
         export_group_layout = QVBoxLayout()
 
-        self.export_json_btn = QPushButton("Export as JSON")
+        self.export_json_btn = QPushButton()
         self.export_json_btn.clicked.connect(self.export_as_json)
         self.export_json_btn.setEnabled(False)
         export_group_layout.addWidget(self.export_json_btn)
 
-        self.export_csv_btn = QPushButton("Export as CSV")
+        self.export_csv_btn = QPushButton()
         self.export_csv_btn.clicked.connect(self.export_as_csv)
         self.export_csv_btn.setEnabled(False)
         export_group_layout.addWidget(self.export_csv_btn)
 
-        self.export_curation_btn = QPushButton("Export Curation Report")
+        self.export_curation_btn = QPushButton()
         self.export_curation_btn.clicked.connect(self.export_curation_report)
         self.export_curation_btn.setEnabled(False)
         export_group_layout.addWidget(self.export_curation_btn)
 
-        export_group.setLayout(export_group_layout)
-        sidebar_layout.addWidget(export_group)
+        self.export_group.setLayout(export_group_layout)
+        sidebar_layout.addWidget(self.export_group)
 
-        write_group = QGroupBox("Write-back")
+        self.write_group = QGroupBox()
         write_group_layout = QVBoxLayout()
 
-        self.write_metadata_btn = QPushButton("Write Metadata to File")
+        self.write_metadata_btn = QPushButton()
         self.write_metadata_btn.clicked.connect(self.write_metadata)
         self.write_metadata_btn.setEnabled(False)
         write_group_layout.addWidget(self.write_metadata_btn)
 
-        self.save_sidecar_btn = QPushButton("Save Sidecar JSON")
+        self.save_sidecar_btn = QPushButton()
         self.save_sidecar_btn.clicked.connect(self.save_sidecar)
         self.save_sidecar_btn.setEnabled(False)
-        self.save_sidecar_btn.setToolTip(
-            "Save metadata as a .json file beside the image (same folder, same base name)."
-        )
         write_group_layout.addWidget(self.save_sidecar_btn)
 
-        write_group.setLayout(write_group_layout)
-        sidebar_layout.addWidget(write_group)
+        self.write_group.setLayout(write_group_layout)
+        sidebar_layout.addWidget(self.write_group)
 
-        integrity_group = QGroupBox("Integrity")
+        self.integrity_group = QGroupBox()
         integrity_group_layout = QVBoxLayout()
 
-        self.save_checksums_btn = QPushButton("Save Checksums")
+        self.save_checksums_btn = QPushButton()
         self.save_checksums_btn.clicked.connect(self.save_checksums)
         self.save_checksums_btn.setEnabled(False)
-        self.save_checksums_btn.setToolTip(
-            "Write checksums.json for the loaded files' folder, for later integrity checks."
-        )
         integrity_group_layout.addWidget(self.save_checksums_btn)
 
-        self.verify_integrity_btn = QPushButton("Verify Integrity")
+        self.verify_integrity_btn = QPushButton()
         self.verify_integrity_btn.clicked.connect(self.verify_integrity)
         self.verify_integrity_btn.setEnabled(False)
-        self.verify_integrity_btn.setToolTip(
-            "Compare current file checksums against a saved checksums.json."
-        )
         integrity_group_layout.addWidget(self.verify_integrity_btn)
 
-        integrity_group.setLayout(integrity_group_layout)
-        sidebar_layout.addWidget(integrity_group)
+        self.integrity_group.setLayout(integrity_group_layout)
+        sidebar_layout.addWidget(self.integrity_group)
 
-        view_group = QGroupBox("View")
+        self.view_group = QGroupBox()
         view_group_layout = QVBoxLayout()
 
-        self.toggle_preview_btn = QPushButton("Hide Preview")
+        self.toggle_preview_btn = QPushButton()
         self.toggle_preview_btn.setCheckable(True)
         self.toggle_preview_btn.clicked.connect(self.toggle_preview_panel)
         view_group_layout.addWidget(self.toggle_preview_btn)
 
-        view_group.setLayout(view_group_layout)
-        sidebar_layout.addWidget(view_group)
+        self.view_group.setLayout(view_group_layout)
+        sidebar_layout.addWidget(self.view_group)
 
         sidebar_layout.addStretch()
         sidebar_widget.setLayout(sidebar_layout)
@@ -354,7 +355,7 @@ class MetadataViewer(QWidget):
         preview_layout = QVBoxLayout()
         preview_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.thumbnail_display = QLabel("No Preview")
+        self.thumbnail_display = QLabel()
         self.thumbnail_display.setAlignment(Qt.AlignCenter)
         self.thumbnail_display.setFixedSize(160, 160)
         self.thumbnail_display.setStyleSheet(
@@ -370,18 +371,15 @@ class MetadataViewer(QWidget):
 
         self.raw_metadata_display = QTextEdit()
         self.raw_metadata_display.setReadOnly(True)
-        self.raw_metadata_display.setPlaceholderText("Raw metadata will appear here")
-        self.tab_widget.addTab(self.raw_metadata_display, "Raw Metadata")
+        self.tab_widget.addTab(self.raw_metadata_display, "")
 
         self.recommended_metadata_display = QTextEdit()
         self.recommended_metadata_display.setReadOnly(True)
-        self.recommended_metadata_display.setPlaceholderText("Recommended / standardized fields will appear here")
-        self.tab_widget.addTab(self.recommended_metadata_display, "Recommended Fields")
+        self.tab_widget.addTab(self.recommended_metadata_display, "")
 
         self.curation_display = QTextEdit()
         self.curation_display.setReadOnly(True)
-        self.curation_display.setPlaceholderText("Curation flags and integrity info will appear here")
-        self.tab_widget.addTab(self.curation_display, "Curation")
+        self.tab_widget.addTab(self.curation_display, "")
 
         content_layout.addWidget(self.tab_widget)
         layout.addLayout(content_layout)
@@ -395,13 +393,75 @@ class MetadataViewer(QWidget):
         self.loaded_files = []
         self.current_display_file_path = None
         self.current_display_metadata = None
+        self.current_display_text_report = ""
         self.folder_worker = None
         self.progress_dialog = None
+
+        self.retranslate_ui()
+
+    # === Language ===
+    def on_language_changed(self, lang_code):
+        set_language(lang_code)
+        self.retranslate_ui()
+        # Re-render the current file (if any) so dynamic curation/error text
+        # picks up the new language too.
+        if self.current_display_file_path and self.current_display_metadata:
+            self.render_metadata(
+                self.current_display_file_path,
+                self.current_display_text_report,
+                self.current_display_metadata,
+            )
+        else:
+            self.update_thumbnail(None)
+
+    def retranslate_ui(self):
+        self.setWindowTitle(tr("window_title"))
+
+        self.format_label.setText(tr("label_select_format"))
+        self.app_label.setText(tr("label_select_application"))
+        self.standards_info_btn.setText(tr("btn_standards_info"))
+        self.file_selector_label.setText(tr("label_select_file"))
+        self.language_label.setText(tr("label_language"))
+
+        self.file_group.setTitle(tr("group_file"))
+        self.load_file_btn.setText(tr("btn_load_file"))
+        self.load_folder_btn.setText(tr("btn_load_folder"))
+
+        self.export_group.setTitle(tr("group_export"))
+        self.export_json_btn.setText(tr("btn_export_json"))
+        self.export_csv_btn.setText(tr("btn_export_csv"))
+        self.export_curation_btn.setText(tr("btn_export_curation"))
+
+        self.write_group.setTitle(tr("group_write"))
+        self.write_metadata_btn.setText(tr("btn_write_metadata"))
+        self.save_sidecar_btn.setText(tr("btn_save_sidecar"))
+        self.save_sidecar_btn.setToolTip(tr("tooltip_save_sidecar"))
+
+        self.integrity_group.setTitle(tr("group_integrity"))
+        self.save_checksums_btn.setText(tr("btn_save_checksums"))
+        self.save_checksums_btn.setToolTip(tr("tooltip_save_checksums"))
+        self.verify_integrity_btn.setText(tr("btn_verify_integrity"))
+        self.verify_integrity_btn.setToolTip(tr("tooltip_verify_integrity"))
+
+        self.view_group.setTitle(tr("group_view"))
+        self.toggle_preview_btn.setText(
+            tr("btn_show_preview") if self.toggle_preview_btn.isChecked() else tr("btn_hide_preview")
+        )
+
+        self.tab_widget.setTabText(0, tr("tab_raw_metadata"))
+        self.tab_widget.setTabText(1, tr("tab_recommended_fields"))
+        self.tab_widget.setTabText(2, tr("tab_curation"))
+        self.raw_metadata_display.setPlaceholderText(tr("placeholder_raw_metadata"))
+        self.recommended_metadata_display.setPlaceholderText(tr("placeholder_recommended_fields"))
+        self.curation_display.setPlaceholderText(tr("placeholder_curation"))
+
+        if not self.thumbnail_display.pixmap() or self.thumbnail_display.pixmap().isNull():
+            self.thumbnail_display.setText(tr("label_no_preview"))
 
     # === Thumbnail Preview ===
     def toggle_preview_panel(self, checked):
         self.preview_panel.setVisible(not checked)
-        self.toggle_preview_btn.setText("Show Preview" if checked else "Hide Preview")
+        self.toggle_preview_btn.setText(tr("btn_show_preview") if checked else tr("btn_hide_preview"))
 
     def update_thumbnail(self, file_path):
         thumb_bytes = generate_thumbnail_bytes(file_path) if file_path else None
@@ -415,7 +475,7 @@ class MetadataViewer(QWidget):
         else:
             self.thumbnail_display.setPixmap(QPixmap())
             ext = os.path.splitext(file_path)[1].lstrip(".").upper() if file_path else ""
-            self.thumbnail_display.setText(ext if ext else "No Preview")
+            self.thumbnail_display.setText(ext if ext else tr("label_no_preview"))
 
     # === Standards Documentation ===
     def show_standards_info(self):
@@ -423,7 +483,7 @@ class MetadataViewer(QWidget):
         info = get_standard_info(context_name)
 
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Metadata Standard — {context_name}")
+        dialog.setWindowTitle(tr("dialog_title_metadata_standard", context=context_name))
         dialog.setMinimumWidth(520)
         dialog_layout = QVBoxLayout()
 
@@ -433,7 +493,7 @@ class MetadataViewer(QWidget):
         text_label.setOpenExternalLinks(True)
 
         if not info:
-            text_label.setText(f"No standards documentation is registered for '{context_name}' yet.")
+            text_label.setText(tr("text_no_standards_doc", context=context_name))
         else:
             covered_html = "".join(f"<li>{item}</li>" for item in info["covered"])
             not_covered_html = "".join(f"<li>{item}</li>" for item in info["not_covered"])
@@ -442,16 +502,16 @@ class MetadataViewer(QWidget):
                 f"<h3>{info['standard_name']}</h3>"
                 f"<p><a href=\"{info['reference_url']}\">{info['reference_url']}</a></p>"
                 f"<p><a href=\"{info['secondary_url']}\">{info['secondary_label']}</a></p>"
-                f"<p><b>What this app extracts for this standard:</b></p>"
+                f"<p><b>{tr('text_covers')}</b></p>"
                 f"<ul>{covered_html}</ul>"
-                f"<p><b>Not covered by file metadata (must be supplied separately):</b></p>"
+                f"<p><b>{tr('text_not_covered')}</b></p>"
                 f"<ul>{not_covered_html}</ul>"
             )
             text_label.setText(html)
 
         dialog_layout.addWidget(text_label)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("btn_close"))
         close_btn.clicked.connect(dialog.accept)
         dialog_layout.addWidget(close_btn)
 
@@ -507,13 +567,13 @@ class MetadataViewer(QWidget):
     # === File and Folder Loading ===
     def load_file(self):
         filter_str = "Images (" + " ".join(f"*{ext}" for ext in ALL_EXTENSIONS) + ")"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", filter=filter_str)
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("dialog_select_file"), filter=filter_str)
         if file_path:
             self.select_format_for_extension(file_path)
             self.display_metadata(file_path, single_file=True)
 
     def load_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_folder"))
         if not folder_path:
             return
 
@@ -525,7 +585,7 @@ class MetadataViewer(QWidget):
         ]
 
         if not file_paths:
-            QMessageBox.information(self, "No Files Found", "No supported image files were found in this folder.")
+            QMessageBox.information(self, tr("msg_no_files_found_title"), tr("msg_no_files_found_text"))
             return
 
         self.loaded_files = []
@@ -535,8 +595,8 @@ class MetadataViewer(QWidget):
         selected_format = self.format_dropdown.currentText()
         selected_app = self.app_dropdown.currentText()
 
-        self.progress_dialog = QProgressDialog("Loading files...", "Cancel", 0, len(file_paths), self)
-        self.progress_dialog.setWindowTitle("Batch Loading")
+        self.progress_dialog = QProgressDialog(tr("progress_loading_files"), tr("progress_cancel"), 0, len(file_paths), self)
+        self.progress_dialog.setWindowTitle(tr("progress_batch_loading_title"))
         self.progress_dialog.setMinimumDuration(0)
         self.progress_dialog.setValue(0)
 
@@ -548,7 +608,7 @@ class MetadataViewer(QWidget):
 
     def on_folder_load_progress(self, current, total, filename):
         if self.progress_dialog is not None:
-            self.progress_dialog.setLabelText(f"Processing {filename} ({current}/{total})")
+            self.progress_dialog.setLabelText(tr("progress_processing", filename=filename, current=current, total=total))
             self.progress_dialog.setValue(current)
 
     def on_folder_load_finished(self, results):
@@ -581,6 +641,7 @@ class MetadataViewer(QWidget):
     def render_metadata(self, file_path, text_report, standardized_metadata):
         self.current_display_file_path = file_path
         self.current_display_metadata = standardized_metadata
+        self.current_display_text_report = text_report
         ext = os.path.splitext(file_path)[1].lower()
         self.write_metadata_btn.setEnabled(ext in SUPPORTED_WRITE_EXTENSIONS)
         self.save_sidecar_btn.setEnabled(bool(file_path))
@@ -590,12 +651,12 @@ class MetadataViewer(QWidget):
 
         # ── Tab 1: Raw Metadata ───────────────────────────────────────────────
         self.raw_metadata_display.clear()
-        self.raw_metadata_display.append(f"File: {fname}\n")
+        self.raw_metadata_display.append(f"{tr('label_file')} {fname}\n")
         self.raw_metadata_display.append(text_report)
 
         # ── Tab 2: Recommended Fields ─────────────────────────────────────────
         self.recommended_metadata_display.clear()
-        self.recommended_metadata_display.append(f"File: {fname}\n")
+        self.recommended_metadata_display.append(f"{tr('label_file')} {fname}\n")
 
         _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference"}
         active_profile = get_profile(self.app_dropdown.currentText())
@@ -659,27 +720,27 @@ class MetadataViewer(QWidget):
                 )
             flags_html = " &nbsp; ".join(flag_parts)
         else:
-            flags_html = '<span style="color:#27ae60; font-weight:bold;">✔ OK — no issues detected</span>'
+            flags_html = f'<span style="color:#27ae60; font-weight:bold;">✔ {tr("curation_ok_text")}</span>'
 
         html = (
-            f"<h3 style='margin-bottom:4px;'>Curation Summary — {fname}</h3>"
-            f"<p><b>Flags:</b> {flags_html}</p>"
+            f"<h3 style='margin-bottom:4px;'>{tr('curation_summary_title', filename=fname)}</h3>"
+            f"<p><b>{tr('curation_flags_label')}</b> {flags_html}</p>"
         )
 
         if md5:
-            html += f"<p><b>MD5 Checksum:</b> <code>{md5}</code></p>"
+            html += f"<p><b>{tr('curation_md5_label')}</b> <code>{md5}</code></p>"
 
         if comp_warn:
             html += (
                 f"<p style='color:#c0392b;'>"
-                f"<b>⚠ Compression Warning:</b> {comp_warn}"
+                f"<b>⚠ {tr('curation_compression_warning_label')}</b> {comp_warn}"
                 f"</p>"
             )
 
         if isinstance(ref, dict) and ref.get("Standard"):
             html += (
-                f"<p><b>Metadata Standard:</b> {ref['Standard']}<br>"
-                f"<b>Reference:</b> <a href='{ref.get('URL','')}' style='color:#2980b9;'>"
+                f"<p><b>{tr('curation_standard_label')}</b> {ref['Standard']}<br>"
+                f"<b>{tr('curation_reference_label')}</b> <a href='{ref.get('URL','')}' style='color:#2980b9;'>"
                 f"{ref.get('URL','')}</a></p>"
             )
 
@@ -701,9 +762,9 @@ class MetadataViewer(QWidget):
             self.update_thumbnail(None)
             self.raw_metadata_display.clear()
             self.recommended_metadata_display.clear()
-            self.raw_metadata_display.append(f"File: {os.path.basename(file_path)}\n")
-            self.raw_metadata_display.append(f"Error: {str(e)}")
-            self.recommended_metadata_display.append("Metadata extraction failed.")
+            self.raw_metadata_display.append(f"{tr('label_file')} {os.path.basename(file_path)}\n")
+            self.raw_metadata_display.append(tr("text_error_prefix", error=str(e)))
+            self.recommended_metadata_display.append(tr("text_metadata_extraction_failed"))
 
         if single_file and self.last_standardized_metadata:
             self.all_standardized_metadata = [self.last_standardized_metadata]
@@ -723,15 +784,11 @@ class MetadataViewer(QWidget):
         Returns the edited dict, or None if the user cancelled.
         """
         dialog = QDialog(self)
-        dialog.setWindowTitle("Edit Metadata Before Writing")
+        dialog.setWindowTitle(tr("dialog_title_edit_metadata"))
         dialog.setMinimumSize(540, 600)
         outer_layout = QVBoxLayout()
 
-        note = QLabel(
-            "Edit the values below, then click Save to write them into the file. "
-            "Fields with multiple sub-values (shown greyed out) are structured "
-            "and not editable here."
-        )
+        note = QLabel(tr("text_edit_metadata_note"))
         note.setWordWrap(True)
         outer_layout.addWidget(note)
 
@@ -800,9 +857,8 @@ class MetadataViewer(QWidget):
 
         confirm = QMessageBox.warning(
             self,
-            "Write Metadata to File",
-            f"This will overwrite metadata in:\n{self.current_display_file_path}\n\n"
-            "This action cannot be undone. Continue?",
+            tr("dialog_title_write_metadata"),
+            tr("confirm_overwrite_metadata", path=self.current_display_file_path),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -812,9 +868,9 @@ class MetadataViewer(QWidget):
         try:
             write_metadata_to_file(self.current_display_file_path, edited_metadata)
             self._apply_edited_metadata(edited_metadata)
-            QMessageBox.information(self, "Success", "Metadata written to file successfully.")
+            QMessageBox.information(self, tr("msg_success_title"), tr("msg_write_metadata_success"))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to write metadata: {str(e)}")
+            QMessageBox.critical(self, tr("msg_error_title"), tr("msg_write_metadata_failed", error=str(e)))
 
     # === Curation Report Export ===
     def export_curation_report(self):
@@ -828,7 +884,7 @@ class MetadataViewer(QWidget):
             return
 
         save_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Curation Report", filter="CSV Files (*.csv)"
+            self, tr("dialog_save_curation_report"), filter="CSV Files (*.csv)"
         )
         if not save_path:
             return
@@ -888,9 +944,9 @@ class MetadataViewer(QWidget):
                 writer.writeheader()
                 writer.writerows(rows)
 
-            QMessageBox.information(self, "Success", "Curation report saved successfully.")
+            QMessageBox.information(self, tr("msg_success_title"), tr("msg_curation_report_success"))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save curation report: {str(e)}")
+            QMessageBox.critical(self, tr("msg_error_title"), tr("msg_curation_report_failed", error=str(e)))
 
     # === Integrity Verification ===
     def _current_batch_sources(self):
@@ -917,11 +973,11 @@ class MetadataViewer(QWidget):
         try:
             out_path = save_checksums(folder, checksums)
             QMessageBox.information(
-                self, "Success",
-                f"Checksums saved for {len(checksums)} file(s):\n{out_path}"
+                self, tr("msg_success_title"),
+                tr("msg_checksums_success", count=len(checksums), path=out_path)
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save checksums: {str(e)}")
+            QMessageBox.critical(self, tr("msg_error_title"), tr("msg_checksums_failed", error=str(e)))
 
     def verify_integrity(self):
         sources = self._current_batch_sources()
@@ -932,9 +988,7 @@ class MetadataViewer(QWidget):
         stored = load_checksums(folder)
         if stored is None:
             QMessageBox.information(
-                self, "No Checksums Found",
-                f"No checksums.json found in this folder.\n"
-                "Use 'Save Checksums' first to create a baseline."
+                self, tr("msg_no_checksums_title"), tr("msg_no_checksums_text")
             )
             return
 
@@ -958,7 +1012,7 @@ class MetadataViewer(QWidget):
                 lines.append(f"[{status}] {name}")
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Integrity Verification Result")
+        dialog.setWindowTitle(tr("dialog_title_integrity_result"))
         dialog.setMinimumSize(480, 360)
         dialog_layout = QVBoxLayout()
 
@@ -967,7 +1021,7 @@ class MetadataViewer(QWidget):
         result_display.setPlainText("\n".join(lines))
         dialog_layout.addWidget(result_display)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("btn_close"))
         close_btn.clicked.connect(dialog.accept)
         dialog_layout.addWidget(close_btn)
 
@@ -985,8 +1039,8 @@ class MetadataViewer(QWidget):
         if os.path.exists(out_path):
             confirm = QMessageBox.warning(
                 self,
-                "Save Sidecar JSON",
-                f"A sidecar file already exists:\n{out_path}\n\nOverwrite it?",
+                tr("dialog_title_save_sidecar"),
+                tr("confirm_overwrite_sidecar", path=out_path),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
             )
@@ -995,28 +1049,28 @@ class MetadataViewer(QWidget):
 
         try:
             written = write_sidecar(self.current_display_file_path, self.current_display_metadata)
-            QMessageBox.information(self, "Success", f"Sidecar saved:\n{written}")
+            QMessageBox.information(self, tr("msg_success_title"), tr("msg_sidecar_success", path=written))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save sidecar: {str(e)}")
+            QMessageBox.critical(self, tr("msg_error_title"), tr("msg_sidecar_failed", error=str(e)))
 
     # === Export Functions ===
     def export_as_json(self):
         if not self.all_standardized_metadata:
             return
-        save_path, _ = QFileDialog.getSaveFileName(self, "Save JSON", filter="JSON Files (*.json)")
+        save_path, _ = QFileDialog.getSaveFileName(self, tr("dialog_save_json"), filter="JSON Files (*.json)")
         if save_path:
             try:
                 serializable_data = make_json_serializable(self.all_standardized_metadata)
                 with open(save_path, 'w', encoding='utf-8') as f:
                     json.dump(serializable_data, f, indent=4)
-                QMessageBox.information(self, "Success", "JSON file saved successfully.")
+                QMessageBox.information(self, tr("msg_success_title"), tr("msg_json_success"))
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to save JSON: {str(e)}")
+                QMessageBox.critical(self, tr("msg_error_title"), tr("msg_json_failed", error=str(e)))
 
     def export_as_csv(self):
         if not self.all_standardized_metadata:
             return
-        save_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", filter="CSV Files (*.csv)")
+        save_path, _ = QFileDialog.getSaveFileName(self, tr("dialog_save_csv"), filter="CSV Files (*.csv)")
         if save_path:
             try:
                 flat_list = []
@@ -1043,9 +1097,9 @@ class MetadataViewer(QWidget):
                     writer.writeheader()
                     for row in flat_list:
                         writer.writerow(row)
-                QMessageBox.information(self, "Success", "CSV file saved successfully.")
+                QMessageBox.information(self, tr("msg_success_title"), tr("msg_csv_success"))
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to save CSV: {str(e)}")
+                QMessageBox.critical(self, tr("msg_error_title"), tr("msg_csv_failed", error=str(e)))
 
 
 def main():

@@ -34,6 +34,11 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).
+- 🇨🇦 **Bilingual EN/FR interface** — a language selector switches every
+  button, label, tooltip, dialog, and error/success message between
+  English and French, including the dynamically rendered Curation
+  summary. (Extracted metadata field labels and standards documentation
+  text are not yet translated — see [`ARCHITECTURE.md`](ARCHITECTURE.md).)
 - 🖼️ **Collapsible thumbnail preview** — confirms visually which file is
   loaded (JPG/PNG/TIFF, first page for multi-page TIFF); other formats
   show a generic extension placeholder.

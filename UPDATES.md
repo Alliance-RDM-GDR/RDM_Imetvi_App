@@ -7,6 +7,34 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Bilingual EN/FR interface (C4)
+
+- Added `i18n/strings_en.py` and `i18n/strings_fr.py`: flat `{key:
+  template}` dicts covering every static UI string — window title,
+  sidebar group titles, button labels, tooltips, tab titles, placeholder
+  text, dialog titles, and every `QMessageBox` message. `i18n/__init__.py`
+  exposes `tr(key, **kwargs)` (falls back to English, then the raw key —
+  never crashes on a missing translation), `set_language()`,
+  `get_language()`.
+- Added a `Language: EN | FR` dropdown to the top bar. Switching it calls
+  `MetadataViewer.retranslate_ui()`, which re-applies `tr()` to every
+  persistent widget, and re-renders the currently displayed file (via a
+  newly stored `self.current_display_text_report`) so the Curation tab's
+  dynamically built summary and the "File: …" header update too, not just
+  future loads.
+- Deliberately out of scope: metadata field labels
+  (`metadata_profiles/*_profile.py`) and standards-coverage text
+  (`standards_registry.py`) — those describe the extracted data itself,
+  live across ~10 separate profile files, and are a larger effort than
+  covering UI chrome.
+- `tests/test_i18n.py` (9 tests) asserts `strings_en.py` and
+  `strings_fr.py` have identical key sets, so a key added to one and
+  forgotten in the other fails a test instead of silently falling back to
+  English in the French UI.
+- Verified interactively: switched EN→FR→EN with a file loaded, confirmed
+  every sidebar/tab/dialog string and the dynamic Curation summary
+  translated correctly in both directions.
+
 ## 2026-08-26 — Grouped action sidebar
 
 - Replaced the single horizontal row of action buttons (Load File through

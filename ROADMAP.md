@@ -112,7 +112,7 @@ Los usuarios necesitan confirmar visualmente que están viendo el archivo correc
 - Soportado para JPG, PNG, TIFF (primera página/frame)
 - Para DICOM/FITS/HDF5 mostrar ícono genérico del formato
 
-### C4. Interfaz bilingüe EN/FR [ ]
+### C4. Interfaz bilingüe EN/FR [x]
 Objetivo explícito del proyecto (institución canadiense).
 
 - Archivo de strings `i18n/strings_en.py` y `i18n/strings_fr.py`
