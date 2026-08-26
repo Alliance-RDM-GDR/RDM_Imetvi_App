@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QTabWidget, QGroupBox
 )
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QTextCharFormat
 
 # === Import parsers, standardizers, and profiles ===
 from metadata_parsers.tiff_parser import parse_tiff_metadata
@@ -654,6 +654,22 @@ class MetadataViewer(QWidget):
             file_path, text_report, standardized_metadata = self.loaded_files[index]
             self.render_metadata(file_path, text_report, standardized_metadata)
 
+    @staticmethod
+    def _reset_text_format(text_edit):
+        """
+        Resets a QTextEdit's insertion character format to the widget's
+        default. QTextEdit.append() with an HTML fragment (used for the
+        colored warning spans below) leaves the *next* insertion using
+        whatever character format the HTML ended on — clear() does not
+        reset this. Without this reset, a colored span that happens to be
+        the last thing appended (e.g. the final flagged variable in a long
+        list) leaves every subsequent append(), including ones for a
+        completely different file loaded later, colored the same way.
+        """
+        cursor = text_edit.textCursor()
+        cursor.setCharFormat(QTextCharFormat())
+        text_edit.setTextCursor(cursor)
+
     def render_metadata(self, file_path, text_report, standardized_metadata):
         self.current_display_file_path = file_path
         self.current_display_metadata = standardized_metadata
@@ -673,6 +689,7 @@ class MetadataViewer(QWidget):
 
         # ── Tab 2: Recommended Fields ─────────────────────────────────────────
         self.recommended_metadata_display.clear()
+        self._reset_text_format(self.recommended_metadata_display)
         self.recommended_metadata_display.append(f"{tr('label_file')} {fname}\n")
 
         _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference", "_MissingFields"}
@@ -685,6 +702,7 @@ class MetadataViewer(QWidget):
                 f'<span style="color:#c0392b; font-weight:bold;">'
                 f'⚠ {tr("missing_fields_label")} {missing_labels}</span>'
             )
+            self._reset_text_format(self.recommended_metadata_display)
             self.recommended_metadata_display.append("")
 
         for key, value in standardized_metadata.items():
@@ -743,6 +761,8 @@ class MetadataViewer(QWidget):
                     if shape:
                         line += f"  shape: {shape}"
                     self.recommended_metadata_display.append(line)
+                    if not std_name:
+                        self._reset_text_format(self.recommended_metadata_display)
             else:
                 if isinstance(value, list) and all(isinstance(v, str) for v in value):
                     # Plain string lists (e.g. CoordinateVariables, GeoTIFF's

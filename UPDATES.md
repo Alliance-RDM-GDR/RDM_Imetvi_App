@@ -7,6 +7,33 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Fix color bleed across files in Recommended Fields
+
+Found while reviewing a CZI file right after a NetCDF file with several
+orange "no standard_name" warnings — the entire Recommended Fields tab
+rendered in orange for the unrelated CZI file, not just a warning line.
+
+Root cause: `QTextEdit.append()` with an HTML fragment leaves the
+*insertion cursor's* character format at whatever the HTML ended on.
+`clear()` wipes the document content but not that lingering format, so if
+a colored `<span>` (the missing-fields banner, or a NetCDF variable's "no
+standard_name" flag) happened to be the last thing appended, every
+subsequent plain-text `append()` — including for a completely different
+file loaded afterward — inherited that color, since nothing was resetting
+the cursor's format in between.
+
+- `main.py`: added `_reset_text_format()`, a static helper that resets a
+  `QTextEdit`'s insertion character format via
+  `cursor.setCharFormat(QTextCharFormat())`. Called right after
+  `recommended_metadata_display.clear()` (undoes bleed carried over from
+  a previous file's render) and immediately after each HTML-colored
+  append — the missing-fields banner and each NetCDF variable line
+  lacking a `standard_name`.
+- Verified interactively by reproducing the exact sequence that surfaced
+  it: loaded the NetCDF file (multiple orange-flagged variables, the last
+  line of the tab ending in an orange span), then loaded a CZI file —
+  confirmed the CZI's Recommended Fields rendered in normal black text.
+
 ## 2026-08-26 — Readable NetCDF variable list + CF-compliance flagging
 
 The user tested a real NetCDF (`.adcp.nc`, ADCP ocean current data, 32
