@@ -28,6 +28,7 @@ from metadata_parsers.png_parser import parse_png_metadata
 from metadata_parsers.lif_parser import parse_lif_metadata
 from metadata_parsers.netcdf_parser import parse_netcdf_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
+from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
 from standardizers.jpg_general_standardizer import standardize_jpg_general_metadata
 from standardizers.geotiff_remote_sensing_standardizer import standardize_geotiff_remote_sensing_metadata
@@ -56,7 +57,12 @@ FORMAT_REGISTRY = {
     "TIFF": {
         "extensions": [".tif", ".tiff"],
         "parser": parse_tiff_metadata,
-        "contexts": ["Microscopy"],
+        # TIFF is a general-purpose container, not just a microscopy
+        # format — it's equally common for scans, scientific illustrations,
+        # and general photography. Both contexts are offered; the dropdown
+        # defaults to the first ("Microscopy") since that's this app's
+        # primary use case, but "General / EXIF" is one click away.
+        "contexts": ["Microscopy", "General / EXIF"],
     },
     "CZI": {
         "extensions": [".czi"],
@@ -110,52 +116,43 @@ FORMAT_REGISTRY = {
     },
 }
 
-CONTEXT_REGISTRY = {
-    "Microscopy": {
-        "standardizer": standardize_tiff_microscopy_metadata,  # default; overridden per-format below
+# Maps each (format, context) pair to the standardizer that produces that
+# context's field set. A format can support more than one context — TIFF
+# is used for both microscopy captures and general photographs/scans/
+# illustrations, and each needs its own standardizer, since the same raw
+# tags map to a different set of REMBI/EXIF/etc. fields depending on what
+# the file actually represents.
+FORMAT_STANDARDIZERS = {
+    "TIFF": {
+        "Microscopy": standardize_tiff_microscopy_metadata,
+        "General / EXIF": standardize_tiff_general_metadata,
     },
-    "Microscopy (OME)": {
-        "standardizer": standardize_ome_microscopy_metadata,
-    },
-    "Remote Sensing": {
-        "standardizer": standardize_geotiff_remote_sensing_metadata,
-    },
-    "General / EXIF": {
-        "standardizer": standardize_jpg_general_metadata,
-    },
-    "Medical Imaging": {
-        "standardizer": standardize_dicom_medical_metadata,
-    },
-    "Astronomy": {
-        "standardizer": standardize_fits_astronomy_metadata,
-    },
-    "General / HDF5": {
-        "standardizer": standardize_hdf5_general_metadata,
-    },
-    "Microscopy (Leica)": {
-        "standardizer": standardize_lif_microscopy_metadata,
-    },
-    "Remote Sensing (NetCDF)": {
-        "standardizer": standardize_netcdf_remote_sensing_metadata,
-    },
+    "CZI": {"Microscopy": standardize_czi_microscopy_metadata},
+    "OME-TIFF": {"Microscopy (OME)": standardize_ome_microscopy_metadata},
+    "GeoTIFF": {"Remote Sensing": standardize_geotiff_remote_sensing_metadata},
+    "JPG": {"General / EXIF": standardize_jpg_general_metadata},
+    "DICOM": {"Medical Imaging": standardize_dicom_medical_metadata},
+    "FITS": {"Astronomy": standardize_fits_astronomy_metadata},
+    "HDF5": {"General / HDF5": standardize_hdf5_general_metadata},
+    "PNG": {"General / EXIF": standardize_png_general_metadata},
+    "LIF": {"Microscopy (Leica)": standardize_lif_microscopy_metadata},
+    "NetCDF": {"Remote Sensing (NetCDF)": standardize_netcdf_remote_sensing_metadata},
 }
 
-# Format-specific standardizer overrides (a context can be reached by more
-# than one format, e.g. Microscopy via TIFF or CZI, each needing its own
-# standardizer).
-FORMAT_STANDARDIZERS = {
-    "TIFF": standardize_tiff_microscopy_metadata,
-    "CZI": standardize_czi_microscopy_metadata,
-    "OME-TIFF": standardize_ome_microscopy_metadata,
-    "GeoTIFF": standardize_geotiff_remote_sensing_metadata,
-    "JPG": standardize_jpg_general_metadata,
-    "DICOM": standardize_dicom_medical_metadata,
-    "FITS": standardize_fits_astronomy_metadata,
-    "HDF5": standardize_hdf5_general_metadata,
-    "PNG": standardize_png_general_metadata,
-    "LIF": standardize_lif_microscopy_metadata,
-    "NetCDF": standardize_netcdf_remote_sensing_metadata,
-}
+
+def get_standardizer(format_name, context_name):
+    """
+    Returns the standardizer function for a (format, context) pair. Falls
+    back to the format's only/first registered standardizer if the exact
+    context isn't found there — defensive only; the UI always populates
+    context choices from FORMAT_REGISTRY, so this matters only if the two
+    registries ever drift out of sync.
+    """
+    per_context = FORMAT_STANDARDIZERS.get(format_name, {})
+    if context_name in per_context:
+        return per_context[context_name]
+    return next(iter(per_context.values()), None)
+
 
 ALL_EXTENSIONS = sorted({ext for fmt in FORMAT_REGISTRY.values() for ext in fmt["extensions"]})
 
@@ -180,7 +177,7 @@ class FolderLoadWorker(QThread):
 
     def run(self):
         fmt = FORMAT_REGISTRY[self.format_name]
-        standardizer = FORMAT_STANDARDIZERS[self.format_name]
+        standardizer = get_standardizer(self.format_name, self.app_name)
         reference = get_reference_summary(self.app_name)
         results = []
         total = len(self.file_paths)
@@ -193,7 +190,7 @@ class FolderLoadWorker(QThread):
                 if reference:
                     standardized_metadata["_StandardReference"] = reference
                 standardized_metadata["_MissingFields"] = compute_missing_fields(
-                    self.format_name, standardized_metadata
+                    self.format_name, standardized_metadata, self.app_name
                 )
                 results.append((full_path, text_report, standardized_metadata))
             except Exception as e:
@@ -556,7 +553,7 @@ class MetadataViewer(QWidget):
             raise ValueError(f"Unsupported format: {selected_format}")
 
         text_report, raw_metadata = fmt["parser"](file_path, application=selected_app)
-        standardizer = FORMAT_STANDARDIZERS[selected_format]
+        standardizer = get_standardizer(selected_format, selected_app)
         standardized_metadata = standardizer(raw_metadata)
 
         reference = get_reference_summary(selected_app)
@@ -564,7 +561,7 @@ class MetadataViewer(QWidget):
             standardized_metadata["_StandardReference"] = reference
 
         standardized_metadata["_MissingFields"] = compute_missing_fields(
-            selected_format, standardized_metadata
+            selected_format, standardized_metadata, selected_app
         )
 
         # Curation flags for single-file load (no batch context, so only

@@ -16,7 +16,7 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 
   | Format | Extensions | Standard |
   |---|---|---|
-  | TIFF | `.tif` `.tiff` | REMBI (microscopy) |
+  | TIFF | `.tif` `.tiff` | REMBI (microscopy) or EXIF (general photo/scan/illustration) |
   | CZI (Zeiss) | `.czi` | REMBI (microscopy) |
   | OME-TIFF | `.tif` `.tiff` | OME-XML |
   | GeoTIFF | `.tif` `.tiff` | ISO 19115 (geospatial) |
@@ -30,7 +30,12 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 
   Formats sharing an extension (TIFF / OME-TIFF / GeoTIFF all use
   `.tif`/`.tiff`; HDF5 / NetCDF both cover `.nc4`) are selected explicitly
-  via the format dropdown, which auto-suggests a match on load.
+  via the format dropdown, which auto-suggests a match on load. TIFF is a
+  general-purpose container, not just a microscopy format — the
+  **Select Application** dropdown offers both *Microscopy* and
+  *General / EXIF* for it, so a scanned figure or illustration gets
+  EXIF-style fields (camera, date, resolution) instead of REMBI
+  microscopy fields.
 
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).

@@ -120,44 +120,53 @@ if one fits before a new one is created.
 
 ## Format / context registries (`main.py`)
 
-Three module-level dicts in `main.py` wire everything together:
+Two module-level structures in `main.py` wire everything together:
 
 ```python
 FORMAT_REGISTRY = {
-    "TIFF": {"extensions": [...], "parser": parse_tiff_metadata, "contexts": ["Microscopy"]},
-    ...
-}
-CONTEXT_REGISTRY = {
-    "Microscopy": {"standardizer": standardize_tiff_microscopy_metadata},
+    "TIFF": {"extensions": [...], "parser": parse_tiff_metadata, "contexts": ["Microscopy", "General / EXIF"]},
     ...
 }
 FORMAT_STANDARDIZERS = {
-    "TIFF": standardize_tiff_microscopy_metadata,
-    "CZI":  standardize_czi_microscopy_metadata,   # same context, different standardizer
+    "TIFF": {
+        "Microscopy": standardize_tiff_microscopy_metadata,
+        "General / EXIF": standardize_tiff_general_metadata,
+    },
+    "CZI": {"Microscopy": standardize_czi_microscopy_metadata},
     ...
 }
 ```
 
-`CONTEXT_REGISTRY` exists separately from `FORMAT_STANDARDIZERS` because a
-context (e.g. "Microscopy") can be reached by more than one format (TIFF or
-CZI), each needing its own standardizer — the format dropdown picks the
-parser, and `FORMAT_STANDARDIZERS[format_name]` picks the matching
-standardizer for whichever context is active.
+`FORMAT_STANDARDIZERS` is keyed by **(format, context)**, not format
+alone — `get_standardizer(format_name, context_name)` resolves the pair
+(falling back to the format's only/first standardizer if the exact
+context isn't found, defensively). This exists because one format can
+support more than one context: TIFF is used for both microscopy captures
+and general photographs/scans/illustrations, and the same raw tags need
+to map to a different field set depending on which one a file actually
+is. A `CONTEXT_REGISTRY` dict existed here previously as a third,
+format-independent lookup — it was dead code (never actually consulted
+at runtime; every standardizer choice always went through
+`FORMAT_STANDARDIZERS` keyed by format alone), so it silently couldn't
+support this and was removed when the (format, context) keying replaced
+it.
 
 Loading a file:
 1. `select_format_for_extension()` auto-selects a format whose registered
    extensions match the file, narrowing the format dropdown.
 2. `process_file()` (single file) or `FolderLoadWorker` (batch, runs in a
-   `QThread` so the UI stays responsive) calls the parser, then the
-   standardizer, then attaches `_StandardReference` and curation flags.
+   `QThread` so the UI stays responsive) calls the parser, then
+   `get_standardizer(format_name, context_name)` resolves the standardizer
+   for whichever context is currently selected, then `_StandardReference`
+   and curation flags are attached.
 3. `render_metadata()` fills the three tabs using `format_label()` from the
    active profile.
 
 ### Currently registered formats
 
-| Format | Extensions | Context | Parser | Standardizer |
+| Format | Extensions | Contexts | Parser | Standardizer(s) |
 |---|---|---|---|---|
-| TIFF | `.tif .tiff` | Microscopy | `tiff_parser.py` | `tiff_microscopy_standardizer.py` |
+| TIFF | `.tif .tiff` | Microscopy, General / EXIF | `tiff_parser.py` | `tiff_microscopy_standardizer.py`, `tiff_general_standardizer.py` |
 | CZI | `.czi` | Microscopy | `czi_parser.py` | `czi_microscopy_standardizer.py` |
 | OME-TIFF | `.tif .tiff` | Microscopy (OME) | `ome_tiff_parser.py` | `ome_microscopy_standardizer.py` |
 | GeoTIFF | `.tif .tiff` | Remote Sensing | `geotiff_parser.py` | `geotiff_remote_sensing_standardizer.py` |
@@ -168,6 +177,24 @@ Loading a file:
 | HDF5 | `.h5 .hdf5 .nc4` | General / HDF5 | `hdf5_parser.py` | `hdf5_general_standardizer.py` |
 | LIF | `.lif` | Microscopy (Leica) | `lif_parser.py` | `lif_microscopy_standardizer.py` |
 | NetCDF | `.nc .nc4` | Remote Sensing (NetCDF) | `netcdf_parser.py` | `netcdf_remote_sensing_standardizer.py` |
+
+TIFF's `General / EXIF` context reuses that context's existing profile
+(shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
+TIFF tags — `DateTime`, `Artist`, `Copyright`, `Make`/`Model`, resolution
+— into the same field names JPG uses for the equivalent concepts
+(`AcquisitionDate`, `CameraMake`, etc.). It does **not** extract IPTC or
+XMP (this app's TIFF parser only reads baseline TIFF tags; IPTC/XMP
+parsing is JPEG-specific) — `standards_registry.py`'s `General / EXIF`
+entry documents that gap explicitly rather than implying TIFF gets the
+same coverage as JPEG.
+
+`metadata_profiles/required_fields_registry.py` mirrors this
+(format, context) keying where needed: a format's entry is normally a
+flat list, but TIFF's is a `{context_name: [fields]}` dict since
+Microscopy and General / EXIF have unrelated required-field sets
+(`ObjectiveName`/`NA`/`Magnification` vs. `CameraMake`/`CameraModel`).
+`get_required_fields()`/`compute_missing_fields()` accept an optional
+`context_name` and handle both shapes.
 
 Three formats share the `.tif`/`.tiff` extension (TIFF, OME-TIFF, GeoTIFF),
 and HDF5/NetCDF both cover `.nc4` (NetCDF4 files are HDF5-backed) — the

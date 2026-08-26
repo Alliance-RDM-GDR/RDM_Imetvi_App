@@ -8,9 +8,26 @@ from metadata_profiles.required_fields_registry import (
 
 
 def test_get_required_fields_known_format():
-    fields = get_required_fields("TIFF")
+    fields = get_required_fields("TIFF", "Microscopy")
     assert "DimensionX" in fields
     assert "ObjectiveName" in fields
+
+
+def test_get_required_fields_context_specific_format_without_context_is_empty():
+    # TIFF's registry entry is nested per context (Microscopy vs
+    # General / EXIF need very different fields) — omitting context_name
+    # must not silently fall back to one of them.
+    assert get_required_fields("TIFF") == []
+
+
+def test_get_required_fields_context_specific_format_unknown_context():
+    assert get_required_fields("TIFF", "Not A Real Context") == []
+
+
+def test_get_required_fields_tiff_general_exif_context():
+    fields = get_required_fields("TIFF", "General / EXIF")
+    assert "CameraMake" in fields
+    assert "ObjectiveName" not in fields
 
 
 def test_get_required_fields_unknown_format_returns_empty():
@@ -35,8 +52,17 @@ def test_compute_missing_fields_detects_absent_key():
         "BitDepth": "8",
         # ObjectiveName, NA, Magnification absent
     }
-    missing = compute_missing_fields("TIFF", meta)
+    missing = compute_missing_fields("TIFF", meta, "Microscopy")
     assert set(missing) == {"ObjectiveName", "NA", "Magnification"}
+
+
+def test_compute_missing_fields_tiff_general_exif_context():
+    meta = {
+        "DimensionX": "1024", "DimensionY": "1024",
+        "AcquisitionDate": "", "CameraMake": "", "CameraModel": "Canon EOS",
+    }
+    missing = compute_missing_fields("TIFF", meta, "General / EXIF")
+    assert set(missing) == {"AcquisitionDate", "CameraMake"}
 
 
 def test_compute_missing_fields_treats_none_as_missing():

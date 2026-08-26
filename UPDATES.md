@@ -7,6 +7,57 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Add General / EXIF context for TIFF; fix context-routing bug
+
+The user pointed out that TIFF is a general-purpose container, not just a
+microscopy format — it's equally common for scans, scientific
+illustrations, and general photography, and the app should offer more
+than "Microscopy" for it.
+
+- Added `standardizers/tiff_general_standardizer.py`, mapping TIFF's
+  baseline tags (`DateTime`, `Artist`, `Copyright`, `Make`/`Model`,
+  resolution — the EXIF-equivalent fields available without a
+  microscopy-specific schema) into the same field names JPG uses, so it
+  reuses the existing `General / EXIF` profile and standards-registry
+  entry. It does **not** claim IPTC/XMP coverage — this app's TIFF
+  parser only reads baseline tags, unlike the JPEG path — so
+  `standards_registry.py`'s `General / EXIF` entry was updated to say so
+  explicitly rather than implying TIFF gets the same coverage as JPEG.
+- **Found and fixed a real routing bug while implementing this.**
+  `FORMAT_STANDARDIZERS` was keyed by format name alone
+  (`{"TIFF": standardize_tiff_microscopy_metadata, ...}`), so even though
+  `FORMAT_REGISTRY["contexts"]` was a list (implying a format could offer
+  more than one), the app always used the same standardizer regardless
+  of which context was selected in the UI. A separate `CONTEXT_REGISTRY`
+  dict existed and looked like it should have handled this — it never
+  actually did; nothing in `main.py` ever read it. It's now removed.
+  Fixed by re-keying `FORMAT_STANDARDIZERS` as `{format: {context: fn}}`
+  and adding `get_standardizer(format_name, context_name)`, used at both
+  call sites (`process_file()`, `FolderLoadWorker.run()`).
+- `metadata_profiles/required_fields_registry.py` got the same
+  (format, context) treatment where needed: TIFF's entry is now a
+  `{context: [fields]}` dict (Microscopy needs `ObjectiveName`/`NA`/
+  `Magnification`; General / EXIF needs `CameraMake`/`CameraModel`
+  instead) — `get_required_fields()`/`compute_missing_fields()` accept an
+  optional `context_name` and handle both the old flat-list shape (every
+  other format) and the new nested shape.
+- 14 new tests: `tests/test_tiff_general_standardizer.py`,
+  `tests/test_format_standardizer_routing.py` (pins the routing fix
+  directly — including a test that every `FORMAT_REGISTRY` context
+  resolves to a real standardizer, to catch the two registries drifting
+  out of sync again), and extensions to `tests/test_required_fields.py`.
+  Also caught and fixed a real bug in `tiff_general_standardizer.py`'s
+  own resolution-parsing helper while writing its tests (a zero
+  denominator wasn't handled correctly).
+- Verified interactively: loaded the same TIFF under both contexts —
+  *Microscopy* showed the full REMBI field set with its own
+  missing-fields warning (`Pixel Size X/Y`, `Objective`, `Numerical
+  Aperture`, `Magnification`); switching to *General / EXIF* and
+  reloading showed camera/date/resolution fields with a completely
+  different missing-fields warning (`Acquisition Date`, `Camera Make`,
+  `Camera Model`) — confirming the standardizer genuinely changes with
+  context, not just the field labels.
+
 ## 2026-08-26 — Add GeoTIFF band data type and pixel interpretation (ISO 19115 review)
 
 The user asked whether a GeoTIFF test file's metadata was correct and

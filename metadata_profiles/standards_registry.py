@@ -69,12 +69,18 @@ STANDARDS_REGISTRY = {
         "covered": [
             "EXIF: camera make/model, software, acquisition date, resolution, GPS.",
             "IPTC IIM: caption, keywords, byline/credit, copyright notice, "
-            "location (city/province/country), special instructions.",
-            "XMP: usage terms / rights statement, subject keywords (when present).",
+            "location (city/province/country), special instructions. "
+            "JPEG only — see note below.",
+            "XMP: usage terms / rights statement, subject keywords (when present). "
+            "JPEG only — see note below.",
         ],
         "not_covered": [
             "Controlled-vocabulary subject classification (e.g. AAT, LCSH) — "
             "IPTC keywords are free text as written by the photographer/archivist.",
+            "IPTC and XMP for TIFF: this app's TIFF parser only reads baseline "
+            "TIFF tags (the EXIF-equivalent fields — date, artist, copyright, "
+            "make/model, resolution). IPTC IIM and XMP blocks are parsed for "
+            "JPEG only; a TIFF's IPTC/XMP data, if present, is not extracted.",
         ],
     },
     "Medical Imaging": {
