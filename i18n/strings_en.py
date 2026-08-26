@@ -82,6 +82,16 @@ STRINGS_EN = {
     "confirm_overwrite_metadata": "This will overwrite metadata in:\n{path}\n\nThis action cannot be undone. Continue?",
     "msg_write_metadata_success": "Metadata written to file successfully.",
     "msg_write_metadata_failed": "Failed to write metadata: {error}",
+    "tooltip_write_metadata_unsafe": (
+        "Writing is disabled for this format: it would overwrite structural "
+        "metadata (OME-XML channel/plane structure, or GeoTIFF "
+        "georeferencing) that cannot be reconstructed from the pixel data."
+    ),
+    "msg_write_unsafe_format": (
+        "Writing metadata to this format is disabled because it would "
+        "overwrite structural metadata (OME-XML or GeoTIFF georeferencing) "
+        "that cannot be recovered afterward."
+    ),
 
     # --- Curation report export ---
     "dialog_save_curation_report": "Save Curation Report",

@@ -10,6 +10,36 @@ from utils.serialization import make_json_serializable
 
 SUPPORTED_WRITE_EXTENSIONS = (".jpg", ".jpeg", ".tif", ".tiff")
 
+# Formats whose .tif/.tiff container holds structural metadata that
+# _write_tiff_metadata() would destroy: it rewrites the file from the pixel
+# array plus a new ImageDescription string only, dropping every other tag.
+#   - GeoTIFF: georeferencing lives in ModelPixelScaleTag/ModelTiepointTag/
+#     GeoKeyDirectoryTag — none of those survive the rewrite.
+#   - OME-TIFF: the OME-XML (channel/plane/pixel-size structure) IS the
+#     ImageDescription tag this function overwrites with plain JSON.
+# Both are excluded from write support entirely rather than attempting a
+# tag-preserving merge, which would need format-specific reconstruction
+# logic (re-deriving GeoTIFF's GeoKeys, re-serializing valid OME-XML).
+UNSAFE_TIFF_WRITE_FORMATS = {"GeoTIFF", "OME-TIFF"}
+
+
+def is_write_supported(file_path, format_name=None):
+    """
+    Returns True if write_metadata_to_file() can safely handle file_path
+    under the given format context.
+
+    False when the extension isn't handled at all, or when format_name is
+    one of UNSAFE_TIFF_WRITE_FORMATS — writing would silently destroy
+    structural metadata that can't be reconstructed from the pixel data
+    alone (see the comment above).
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext not in SUPPORTED_WRITE_EXTENSIONS:
+        return False
+    if format_name in UNSAFE_TIFF_WRITE_FORMATS:
+        return False
+    return True
+
 # ── IPTC field mapping: standardized key → iptcinfo3 field name ──────────────
 _IPTC_FIELD_MAP = {
     "Caption":              "caption/abstract",

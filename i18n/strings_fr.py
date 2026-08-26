@@ -82,6 +82,17 @@ STRINGS_FR = {
     "confirm_overwrite_metadata": "Ceci écrasera les métadonnées de :\n{path}\n\nCette action est irréversible. Continuer ?",
     "msg_write_metadata_success": "Métadonnées écrites avec succès dans le fichier.",
     "msg_write_metadata_failed": "Échec de l'écriture des métadonnées : {error}",
+    "tooltip_write_metadata_unsafe": (
+        "L'écriture est désactivée pour ce format : elle écraserait des "
+        "métadonnées structurelles (structure des canaux/plans OME-XML, ou "
+        "géoréférencement GeoTIFF) qui ne peuvent pas être reconstruites à "
+        "partir des données de pixels."
+    ),
+    "msg_write_unsafe_format": (
+        "L'écriture des métadonnées est désactivée pour ce format car elle "
+        "écraserait des métadonnées structurelles (OME-XML ou "
+        "géoréférencement GeoTIFF) irrécupérables par la suite."
+    ),
 
     # --- Curation report export ---
     "dialog_save_curation_report": "Enregistrer le rapport de curation",

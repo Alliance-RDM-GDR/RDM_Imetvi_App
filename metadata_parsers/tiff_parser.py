@@ -3,6 +3,24 @@
 import tifffile
 import os
 
+_MAX_INLINE_ITEMS = 8
+
+
+def _format_report_value(value):
+    """
+    Formats a tag value for the human-readable text report. Tags like
+    StripOffsets/StripByteCounts can hold one entry per image strip —
+    hundreds or thousands of numbers — which drowns out everything else
+    in the report if printed in full. Only the printed line is truncated;
+    raw_metadata always keeps the complete, untruncated value.
+    """
+    if isinstance(value, (tuple, list)) and len(value) > _MAX_INLINE_ITEMS:
+        shown = ", ".join(str(v) for v in value[:_MAX_INLINE_ITEMS])
+        remaining = len(value) - _MAX_INLINE_ITEMS
+        return f"({shown}, ... {remaining} more, {len(value)} total)"
+    return str(value)
+
+
 def parse_tiff_metadata(file_path, application=None):
     """
     Extracts all TIFF tags and additional metadata for microscopy images.
@@ -33,7 +51,7 @@ def parse_tiff_metadata(file_path, application=None):
 
                 # Store full lists/tuples without truncating
                 raw_metadata[name] = value
-                text_lines.append(f"{name}: {value}")
+                text_lines.append(f"{name}: {_format_report_value(value)}")
 
             # Capture additional useful properties
             raw_metadata["Shape"] = getattr(page, 'shape', None)
@@ -49,7 +67,7 @@ def parse_tiff_metadata(file_path, application=None):
                     if isinstance(ij_metadata, dict):
                         for k, v in ij_metadata.items():
                             raw_metadata[f"IJMetadata|{k}"] = v
-                            text_lines.append(f"IJMetadata|{k}: {v}")
+                            text_lines.append(f"IJMetadata|{k}: {_format_report_value(v)}")
                 except Exception:
                     pass
 

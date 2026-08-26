@@ -245,6 +245,30 @@ adds them as a `MissingFields` column. HDF5 has no registry entry — its
 standardized output is a dataset inventory, not a fixed scalar field set,
 so "missing field" doesn't apply the same way.
 
+## Write-back safety (`utils/metadata_writer.py::is_write_supported()`)
+
+`_write_tiff_metadata()` rewrites a `.tif`/`.tiff` file from its pixel
+array plus a new `ImageDescription` string, discarding every other tag.
+That's safe for a plain TIFF but destroys two formats that pack
+structural metadata into (or as) tags this function overwrites:
+
+- **GeoTIFF** — georeferencing lives in `ModelPixelScaleTag` /
+  `ModelTiepointTag` / `GeoKeyDirectoryTag`, none of which survive.
+- **OME-TIFF** — the OME-XML (channel/plane/pixel-size structure) *is*
+  the `ImageDescription` tag this function overwrites with plain JSON.
+
+`UNSAFE_TIFF_WRITE_FORMATS = {"GeoTIFF", "OME-TIFF"}` and
+`is_write_supported(file_path, format_name)` gate this at the policy
+layer rather than attempting a tag-preserving merge (which would need
+format-specific reconstruction — re-deriving GeoTIFF's GeoKeys,
+re-serializing valid OME-XML — a much larger effort than disabling the
+unsafe path). `main.py` checks it in two places: `render_metadata()`
+disables the *Write Metadata to File* button (with a tooltip explaining
+why) whenever the active format is unsafe, and `write_metadata()`
+re-checks it before writing — defense in depth, since switching the
+format dropdown without reloading the file can leave the button's
+enabled state stale relative to the currently selected format.
+
 ## Write-back and export paths
 
 Three distinct ways metadata leaves (or is written back into) the app,

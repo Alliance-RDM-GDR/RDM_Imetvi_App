@@ -39,7 +39,7 @@ from standardizers.png_general_standardizer import standardize_png_general_metad
 from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
 from standardizers.netcdf_remote_sensing_standardizer import standardize_netcdf_remote_sensing_metadata
 from utils.serialization import make_json_serializable
-from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
+from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
 from utils.integrity import compute_md5, save_checksums, load_checksums, verify_checksums
 from utils.thumbnail import generate_thumbnail_bytes
@@ -227,6 +227,7 @@ class MetadataViewer(QWidget):
 
         self.format_label = QLabel()
         self.format_dropdown = QComboBox()
+        self.format_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.format_dropdown.addItems(list(FORMAT_REGISTRY.keys()))
         self.format_dropdown.currentTextChanged.connect(self.on_format_changed)
         top_layout.addWidget(self.format_label)
@@ -234,6 +235,11 @@ class MetadataViewer(QWidget):
 
         self.app_label = QLabel()
         self.app_dropdown = QComboBox()
+        # Context names are set dynamically per format (on_format_changed) and
+        # vary a lot in length ("Microscopy" vs "Remote Sensing (NetCDF)") —
+        # AdjustToContents keeps the box wide enough to show the current
+        # selection in full instead of a fixed width truncating longer names.
+        self.app_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         top_layout.addWidget(self.app_label)
         top_layout.addWidget(self.app_dropdown)
 
@@ -243,6 +249,8 @@ class MetadataViewer(QWidget):
 
         self.file_selector_label = QLabel()
         self.file_selector_dropdown = QComboBox()
+        self.file_selector_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.file_selector_dropdown.setMaximumWidth(380)
         self.file_selector_dropdown.currentIndexChanged.connect(self.select_loaded_file)
         self.file_selector_label.hide()
         self.file_selector_dropdown.hide()
@@ -650,8 +658,9 @@ class MetadataViewer(QWidget):
         self.current_display_file_path = file_path
         self.current_display_metadata = standardized_metadata
         self.current_display_text_report = text_report
-        ext = os.path.splitext(file_path)[1].lower()
-        self.write_metadata_btn.setEnabled(ext in SUPPORTED_WRITE_EXTENSIONS)
+        write_supported = is_write_supported(file_path, self.format_dropdown.currentText())
+        self.write_metadata_btn.setEnabled(write_supported)
+        self.write_metadata_btn.setToolTip("" if write_supported else tr("tooltip_write_metadata_unsafe"))
         self.save_sidecar_btn.setEnabled(bool(file_path))
         self.update_thumbnail(file_path)
 
@@ -775,6 +784,7 @@ class MetadataViewer(QWidget):
             self.current_display_file_path = None
             self.current_display_metadata = None
             self.write_metadata_btn.setEnabled(False)
+            self.write_metadata_btn.setToolTip("")
             self.save_sidecar_btn.setEnabled(False)
             self.update_thumbnail(None)
             self.raw_metadata_display.clear()
@@ -866,6 +876,13 @@ class MetadataViewer(QWidget):
 
     def write_metadata(self):
         if not self.current_display_file_path or not self.current_display_metadata:
+            return
+
+        # Defense in depth: the button is already disabled for unsafe
+        # formats (render_metadata), but guard here too in case this is
+        # ever called from somewhere that doesn't go through that check.
+        if not is_write_supported(self.current_display_file_path, self.format_dropdown.currentText()):
+            QMessageBox.warning(self, tr("msg_error_title"), tr("msg_write_unsafe_format"))
             return
 
         edited_metadata = self.open_metadata_editor(self.current_display_metadata)

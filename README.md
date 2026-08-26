@@ -62,6 +62,9 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   `MissingFields` column in the curation report
 - ✍️ **Write metadata back into the file** (JPEG: EXIF + IPTC + XMP; TIFF:
   `ImageDescription`), with an editable form and an overwrite confirmation.
+  Disabled (with an explanatory tooltip) for GeoTIFF and OME-TIFF, where
+  writing would destroy georeferencing or the OME-XML structure — see
+  [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - 📎 **Save Sidecar JSON** — writes `<basename>.json` beside the source
   image without touching the original (QGIS/ArcGIS/repository convention).
 - 🔒 **Cross-session integrity verification** — `Save Checksums` persists

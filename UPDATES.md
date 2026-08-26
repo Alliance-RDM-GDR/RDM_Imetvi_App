@@ -7,6 +7,56 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Fix three issues found reviewing an OME-TIFF batch
+
+Found while the user tested a 10-file OME-TIFF batch (Huygens-processed
+STED microscopy) and asked for a review of the app in that state.
+
+1. **Truncated dropdown text.** `Select Application` showed "Microscopy"
+   instead of "Microscopy (OME)" — the combobox's width was fixed at
+   whatever its first population needed, and never grew when
+   `on_format_changed()` later repopulated it with longer context names
+   ("Remote Sensing (NetCDF)", "General / HDF5", etc.). Fixed by setting
+   `setSizeAdjustPolicy(QComboBox.AdjustToContents)` on `format_dropdown`,
+   `app_dropdown`, and `file_selector_dropdown` (capped at 380px so a very
+   long filename can't push the language selector off-screen). The
+   underlying selected value was always correct — this was purely visual.
+
+2. **Raw Metadata tab drowned in noise.** TIFF tags with one value per
+   image strip (`StripOffsets`, `StripByteCounts`) printed every single
+   number — hundreds of them for a 357-strip OME-TIFF — burying the
+   actually useful OME-XML content. `metadata_parsers/tiff_parser.py`
+   gained `_format_report_value()`: sequences over 8 items now print as
+   `(first 8 values, ... N more, M total)` in the *text report* only;
+   `raw_metadata` (used by exports and standardizers) keeps the complete,
+   untruncated value. Also applied to the `IJMetadata` tag loop.
+   `parse_ome_tiff_metadata()` and `parse_geotiff_metadata()`'s TIFF
+   fallback inherit the fix for free since both call
+   `parse_tiff_metadata()` internally.
+
+3. **Data-loss risk: writing metadata to OME-TIFF (and GeoTIFF).**
+   `_write_tiff_metadata()` rewrites a `.tif`/`.tiff` file from its pixel
+   array plus a new `ImageDescription` string, discarding every other
+   tag — safe for a plain TIFF, but the *Write Metadata to File* button
+   was enabled for any `.tif`/`.tiff` regardless of format. For OME-TIFF,
+   `ImageDescription` **is** the OME-XML (channel/plane/pixel-size
+   structure); for GeoTIFF, georeferencing lives in separate tags
+   (`ModelPixelScaleTag`/`ModelTiepointTag`/`GeoKeyDirectoryTag`) that
+   also don't survive the rewrite. Either would have silently destroyed
+   metadata the app has no way to reconstruct afterward. Fixed by adding
+   `UNSAFE_TIFF_WRITE_FORMATS = {"GeoTIFF", "OME-TIFF"}` and
+   `is_write_supported(file_path, format_name)` to
+   `utils/metadata_writer.py`; `main.py` uses it to disable the button
+   (with an explanatory tooltip, bilingual) and re-checks it inside
+   `write_metadata()` as defense in depth against a stale button state
+   after switching the format dropdown without reloading.
+
+10 new tests across `tests/test_tiff_parser.py` and the new
+`tests/test_metadata_writer_safety.py`. Verified interactively: reloaded
+the same file as OME-TIFF (button correctly disabled, tooltip shown,
+dropdown text no longer truncated, StripOffsets truncated) and as plain
+TIFF (button correctly re-enabled).
+
 ## 2026-08-26 — Fix HAS_GPS_DATA false positive
 
 - `utils/curation_flags.py::_has_gps()` flagged any file whose
