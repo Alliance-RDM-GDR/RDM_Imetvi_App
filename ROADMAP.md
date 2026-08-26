@@ -123,7 +123,7 @@ Objetivo explícito del proyecto (institución canadiense).
 
 ## Bloque D — Integridad y plantillas
 
-### D1. Plantillas de campos esperados [ ]
+### D1. Plantillas de campos esperados [x]
 Para curación de ingesta: definir qué campos se *esperan* para un
 tipo de archivo y advertir cuando faltan.
 

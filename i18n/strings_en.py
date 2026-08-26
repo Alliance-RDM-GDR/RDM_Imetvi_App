@@ -118,6 +118,9 @@ STRINGS_EN = {
     "text_metadata_extraction_failed": "Metadata extraction failed.",
     "text_error_prefix": "Error: {error}",
 
+    # --- Recommended Fields tab: missing required fields ---
+    "missing_fields_label": "Missing required fields:",
+
     # --- Curation tab rendering ---
     "curation_summary_title": "Curation Summary — {filename}",
     "curation_flags_label": "Flags:",

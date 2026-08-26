@@ -118,6 +118,9 @@ STRINGS_FR = {
     "text_metadata_extraction_failed": "L'extraction des métadonnées a échoué.",
     "text_error_prefix": "Erreur : {error}",
 
+    # --- Recommended Fields tab: missing required fields ---
+    "missing_fields_label": "Champs requis manquants :",
+
     # --- Curation tab rendering ---
     "curation_summary_title": "Résumé de curation — {filename}",
     "curation_flags_label": "Indicateurs :",

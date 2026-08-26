@@ -46,6 +46,7 @@ from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
+from metadata_profiles.required_fields_registry import compute_missing_fields
 from i18n import tr, set_language, get_language, LANGUAGES
 
 # === Format / Context registries ===
@@ -191,6 +192,9 @@ class FolderLoadWorker(QThread):
                 standardized_metadata = standardizer(raw_metadata)
                 if reference:
                     standardized_metadata["_StandardReference"] = reference
+                standardized_metadata["_MissingFields"] = compute_missing_fields(
+                    self.format_name, standardized_metadata
+                )
                 results.append((full_path, text_report, standardized_metadata))
             except Exception as e:
                 print(f"Failed to process {os.path.basename(full_path)}: {e}")
@@ -551,6 +555,10 @@ class MetadataViewer(QWidget):
         if reference:
             standardized_metadata["_StandardReference"] = reference
 
+        standardized_metadata["_MissingFields"] = compute_missing_fields(
+            selected_format, standardized_metadata
+        )
+
         # Curation flags for single-file load (no batch context, so only
         # CORRUPT and HAS_GPS_DATA can be evaluated; checksum is still computed).
         flags_by_path, checksums = compute_curation_flags(
@@ -658,8 +666,17 @@ class MetadataViewer(QWidget):
         self.recommended_metadata_display.clear()
         self.recommended_metadata_display.append(f"{tr('label_file')} {fname}\n")
 
-        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference"}
+        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference", "_MissingFields"}
         active_profile = get_profile(self.app_dropdown.currentText())
+
+        missing_fields = standardized_metadata.get("_MissingFields") or []
+        if missing_fields:
+            missing_labels = ", ".join(format_label(k, active_profile) for k in missing_fields)
+            self.recommended_metadata_display.append(
+                f'<span style="color:#c0392b; font-weight:bold;">'
+                f'⚠ {tr("missing_fields_label")} {missing_labels}</span>'
+            )
+            self.recommended_metadata_display.append("")
 
         for key, value in standardized_metadata.items():
             if key in _CURATION_KEYS:
@@ -901,6 +918,7 @@ class MetadataViewer(QWidget):
             "ColorSpace",
             "Compression",
             "CurationFlags",
+            "MissingFields",
             "Standard",
             "StandardURL",
         ]
@@ -934,6 +952,7 @@ class MetadataViewer(QWidget):
                     "ColorSpace": meta.get("ColorSpace", ""),
                     "Compression": meta.get("Compression", ""),
                     "CurationFlags": meta.get("_CurationFlags", ""),
+                    "MissingFields": "; ".join(meta.get("_MissingFields") or []),
                     "Standard": ref.get("Standard", "") if isinstance(ref, dict) else "",
                     "StandardURL": ref.get("URL", "") if isinstance(ref, dict) else "",
                 }

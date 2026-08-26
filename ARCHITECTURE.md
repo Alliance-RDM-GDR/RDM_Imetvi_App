@@ -228,6 +228,23 @@ shape for downstream ingestion tooling (FRDR, Archivematica, DSpace).
 
 ---
 
+## Expected-fields checking (`metadata_profiles/required_fields_registry.py`)
+
+A third pass alongside curation flags: `REQUIRED_FIELDS_REGISTRY` declares,
+per **format** (not context — JPG and PNG share the `General / EXIF`
+context but have unrelated standardized field sets, so requirements are
+keyed the same way `FORMAT_STANDARDIZERS` is), the standardized field
+names a well-formed capture is expected to have populated.
+`compute_missing_fields(format_name, standardized_metadata)` returns the
+subset that's absent, `None`, or blank, attached as `_MissingFields` next
+to `_CurationFlags` in both `process_file()` (single file) and
+`FolderLoadWorker.run()` (batch). `render_metadata()` shows any gaps in
+red at the top of the Recommended Fields tab, using `format_label()` so
+the missing-field names stay human-readable; `export_curation_report()`
+adds them as a `MissingFields` column. HDF5 has no registry entry — its
+standardized output is a dataset inventory, not a fixed scalar field set,
+so "missing field" doesn't apply the same way.
+
 ## Write-back and export paths
 
 Three distinct ways metadata leaves (or is written back into) the app,

@@ -56,6 +56,10 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   - `HAS_GPS_DATA` — GPS metadata present (privacy/consent flag)
   - `DIMENSION_OUTLIER` — dimensions deviate from the batch's most common size
   - `LOSSY_TIFF` — TIFF using internal JPEG compression
+- ⚠️ **Missing required fields** — each format declares the standardized
+  fields a well-formed capture is expected to have; gaps are shown in red
+  at the top of the Recommended Fields tab and exported as a
+  `MissingFields` column in the curation report
 - ✍️ **Write metadata back into the file** (JPEG: EXIF + IPTC + XMP; TIFF:
   `ImageDescription`), with an editable form and an overwrite confirmation.
 - 📎 **Save Sidecar JSON** — writes `<basename>.json` beside the source

@@ -7,6 +7,31 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Expected-fields checking (D1)
+
+- Added `metadata_profiles/required_fields_registry.py`:
+  `REQUIRED_FIELDS_REGISTRY` declares, per format (TIFF, CZI, OME-TIFF,
+  GeoTIFF, JPG, PNG, DICOM, FITS, LIF, NetCDF), the standardized fields a
+  well-formed capture is expected to have. Keyed by format rather than
+  application context, since JPG and PNG share the `General / EXIF`
+  context but have unrelated field sets (EXIF/IPTC/XMP vs. PNG text
+  chunks). HDF5 has no entry — its output is a dataset inventory, not a
+  fixed scalar field set. `compute_missing_fields()` treats a field as
+  missing if it's absent from the dict, `None`, or a blank/whitespace
+  string.
+- `main.py`: both `process_file()` (single file) and
+  `FolderLoadWorker.run()` (batch) attach `_MissingFields` alongside the
+  existing `_CurationFlags`/`_MD5Checksum`. `render_metadata()` shows any
+  gaps in bold red at the top of the Recommended Fields tab (human
+  labels via `format_label()`, not raw keys). `export_curation_report()`
+  gained a `MissingFields` column (semicolon-joined).
+- Added a `missing_fields_label` key to both `i18n/strings_en.py` and
+  `strings_fr.py` so the red warning line stays bilingual.
+- 8 new tests (`tests/test_required_fields.py`).
+- Verified interactively: a JPG with no camera/date EXIF showed "⚠
+  Missing required fields: Acquisition Date, Camera Make, Camera Model"
+  in red, correctly using human-readable labels.
+
 ## 2026-08-26 — Bilingual EN/FR interface (C4)
 
 - Added `i18n/strings_en.py` and `i18n/strings_fr.py`: flat `{key:
