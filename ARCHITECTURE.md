@@ -107,14 +107,23 @@ caught at test time, not a silent English fallback in the French UI.
 ### UI layout
 
 `MetadataViewer.__init__()` builds three regions top to bottom/left to
-right: a top row of format/context selectors, a left action sidebar
+right: a top row of format/context selectors, a left column, and the
+three-tab metadata display filling the rest. The left column
+(`left_column_widget`) stacks two pieces vertically: the action sidebar
 (`QGroupBox` sections — File, Export, Write-back, Integrity, View — each
-holding the buttons for that concern instead of one long horizontal row),
-and a content row with the collapsible thumbnail preview panel followed
-by the three-tab metadata display. Buttons are grouped by *what they act
-on* (a loaded file's export vs. its write-back vs. its integrity record),
-not by when they were added — a new action should join an existing group
-if one fits before a new one is created.
+holding the buttons for that concern instead of one long horizontal row)
+on top, and the collapsible thumbnail preview panel below it. Buttons are
+grouped by *what they act on* (a loaded file's export vs. its write-back
+vs. its integrity record), not by when they were added — a new action
+should join an existing group if one fits before a new one is created.
+
+The sidebar is fixed at 260px, wider than English button text strictly
+needs, because translated labels routinely run longer — French labels
+like "Écrire les métadonnées dans le fichier" or "Enregistrer les sommes
+de contrôle" were clipped at the previous 200px width. Stacking the
+preview below the sidebar (rather than beside it, as originally laid
+out) freed the width to grow without competing with the preview panel or
+the tab area for horizontal space.
 
 ---
 

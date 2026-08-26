@@ -272,9 +272,17 @@ class MetadataViewer(QWidget):
         # === Content row: action sidebar + thumbnail preview + tabbed metadata ===
         content_layout = QHBoxLayout()
 
-        # --- Action sidebar: grouped, titled sections instead of one long row ---
+        # --- Left column: action sidebar (grouped, titled sections) with the
+        # thumbnail preview stacked below it, instead of beside it — keeps
+        # the sidebar wide enough for longer translated button labels
+        # (French routinely runs longer than English) without competing with
+        # the preview for horizontal space.
+        left_column_widget = QWidget()
+        left_column_layout = QVBoxLayout()
+        left_column_layout.setContentsMargins(0, 0, 0, 0)
+
         sidebar_widget = QWidget()
-        sidebar_widget.setFixedWidth(200)
+        sidebar_widget.setFixedWidth(260)
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -358,7 +366,7 @@ class MetadataViewer(QWidget):
 
         sidebar_layout.addStretch()
         sidebar_widget.setLayout(sidebar_layout)
-        content_layout.addWidget(sidebar_widget)
+        left_column_layout.addWidget(sidebar_widget)
 
         self.preview_panel = QWidget()
         preview_layout = QVBoxLayout()
@@ -371,9 +379,12 @@ class MetadataViewer(QWidget):
             "border: 1px solid palette(mid); background: palette(base);"
         )
         preview_layout.addWidget(self.thumbnail_display)
-        preview_layout.addStretch()
         self.preview_panel.setLayout(preview_layout)
-        content_layout.addWidget(self.preview_panel)
+        left_column_layout.addWidget(self.preview_panel)
+
+        left_column_layout.addStretch()
+        left_column_widget.setLayout(left_column_layout)
+        content_layout.addWidget(left_column_widget)
 
         # === Metadata display — tabbed view ===
         self.tab_widget = QTabWidget()

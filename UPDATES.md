@@ -7,6 +7,24 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Fix truncated French button labels (sidebar layout)
+
+The user reported that French button labels ("Écrire les métadonnées
+dans le fichier", "Enregistrer les sommes de contrôle", etc.) were
+clipped in the sidebar — French routinely runs longer than English and
+the sidebar's fixed 200px width was sized for English text.
+
+- `main.py`: moved the thumbnail preview panel from beside the sidebar to
+  stacked below it (`left_column_widget`, a `QVBoxLayout` containing the
+  sidebar then the preview), freeing horizontal space to widen the
+  sidebar from 200px to 260px without shrinking the tab area.
+- No behavioral change — same buttons, same groups, same preview toggle;
+  only the container layout changed.
+- Verified interactively: switched to French, confirmed every sidebar
+  label now renders in full ("Écrire les métadonnées dans le fichier",
+  "Enregistrer le fichier JSON associé", "Vérifier l'intégrité" all fit
+  without clipping), preview panel renders correctly below the sidebar.
+
 ## 2026-08-26 — Add General / EXIF context for TIFF; fix context-routing bug
 
 The user pointed out that TIFF is a general-purpose container, not just a
