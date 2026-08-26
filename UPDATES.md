@@ -7,6 +7,23 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Grouped action sidebar
+
+- Replaced the single horizontal row of action buttons (Load File through
+  Verify Integrity) with a left-hand sidebar of titled `QGroupBox`
+  sections: **File** (Load File, Load Folder), **Export** (Export as
+  JSON/CSV, Export Curation Report), **Write-back** (Write Metadata to
+  File, Save Sidecar JSON), **Integrity** (Save Checksums, Verify
+  Integrity), **View** (Hide/Show Preview).
+- No behavioral change — every button keeps its existing handler,
+  tooltip, and enabled/disabled state logic; only the layout container
+  changed, from `button_layout` (a `QHBoxLayout` inside `layout`) to
+  `sidebar_widget` (a fixed-width `QVBoxLayout` of group boxes inside
+  `content_layout`, alongside the thumbnail preview and tab widget).
+- Verified interactively: sidebar renders with grouped titles, buttons
+  enable correctly after loading a file, no regressions in the existing
+  109-test suite.
+
 ## 2026-08-26 — Thumbnail preview panel (C3)
 
 - Added `utils/thumbnail.py`: `generate_thumbnail_bytes()` rasterizes JPG,

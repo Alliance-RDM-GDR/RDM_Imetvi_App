@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QFileDialog, QMessageBox,
     QLabel, QComboBox, QProgressDialog, QDialog,
     QScrollArea, QFormLayout, QLineEdit, QDialogButtonBox,
-    QTabWidget
+    QTabWidget, QGroupBox
 )
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap
@@ -250,31 +250,57 @@ class MetadataViewer(QWidget):
         # Initialize the application dropdown for the default format
         self.on_format_changed(self.format_dropdown.currentText())
 
-        # === Buttons ===
-        button_layout = QHBoxLayout()
+        # === Content row: action sidebar + thumbnail preview + tabbed metadata ===
+        content_layout = QHBoxLayout()
+
+        # --- Action sidebar: grouped, titled sections instead of one long row ---
+        sidebar_widget = QWidget()
+        sidebar_widget.setFixedWidth(200)
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+
+        file_group = QGroupBox("File")
+        file_group_layout = QVBoxLayout()
 
         self.load_file_btn = QPushButton("Load File")
         self.load_file_btn.clicked.connect(self.load_file)
-        button_layout.addWidget(self.load_file_btn)
+        file_group_layout.addWidget(self.load_file_btn)
 
         self.load_folder_btn = QPushButton("Load Folder")
         self.load_folder_btn.clicked.connect(self.load_folder)
-        button_layout.addWidget(self.load_folder_btn)
+        file_group_layout.addWidget(self.load_folder_btn)
+
+        file_group.setLayout(file_group_layout)
+        sidebar_layout.addWidget(file_group)
+
+        export_group = QGroupBox("Export")
+        export_group_layout = QVBoxLayout()
 
         self.export_json_btn = QPushButton("Export as JSON")
         self.export_json_btn.clicked.connect(self.export_as_json)
         self.export_json_btn.setEnabled(False)
-        button_layout.addWidget(self.export_json_btn)
+        export_group_layout.addWidget(self.export_json_btn)
 
         self.export_csv_btn = QPushButton("Export as CSV")
         self.export_csv_btn.clicked.connect(self.export_as_csv)
         self.export_csv_btn.setEnabled(False)
-        button_layout.addWidget(self.export_csv_btn)
+        export_group_layout.addWidget(self.export_csv_btn)
+
+        self.export_curation_btn = QPushButton("Export Curation Report")
+        self.export_curation_btn.clicked.connect(self.export_curation_report)
+        self.export_curation_btn.setEnabled(False)
+        export_group_layout.addWidget(self.export_curation_btn)
+
+        export_group.setLayout(export_group_layout)
+        sidebar_layout.addWidget(export_group)
+
+        write_group = QGroupBox("Write-back")
+        write_group_layout = QVBoxLayout()
 
         self.write_metadata_btn = QPushButton("Write Metadata to File")
         self.write_metadata_btn.clicked.connect(self.write_metadata)
         self.write_metadata_btn.setEnabled(False)
-        button_layout.addWidget(self.write_metadata_btn)
+        write_group_layout.addWidget(self.write_metadata_btn)
 
         self.save_sidecar_btn = QPushButton("Save Sidecar JSON")
         self.save_sidecar_btn.clicked.connect(self.save_sidecar)
@@ -282,12 +308,13 @@ class MetadataViewer(QWidget):
         self.save_sidecar_btn.setToolTip(
             "Save metadata as a .json file beside the image (same folder, same base name)."
         )
-        button_layout.addWidget(self.save_sidecar_btn)
+        write_group_layout.addWidget(self.save_sidecar_btn)
 
-        self.export_curation_btn = QPushButton("Export Curation Report")
-        self.export_curation_btn.clicked.connect(self.export_curation_report)
-        self.export_curation_btn.setEnabled(False)
-        button_layout.addWidget(self.export_curation_btn)
+        write_group.setLayout(write_group_layout)
+        sidebar_layout.addWidget(write_group)
+
+        integrity_group = QGroupBox("Integrity")
+        integrity_group_layout = QVBoxLayout()
 
         self.save_checksums_btn = QPushButton("Save Checksums")
         self.save_checksums_btn.clicked.connect(self.save_checksums)
@@ -295,7 +322,7 @@ class MetadataViewer(QWidget):
         self.save_checksums_btn.setToolTip(
             "Write checksums.json for the loaded files' folder, for later integrity checks."
         )
-        button_layout.addWidget(self.save_checksums_btn)
+        integrity_group_layout.addWidget(self.save_checksums_btn)
 
         self.verify_integrity_btn = QPushButton("Verify Integrity")
         self.verify_integrity_btn.clicked.connect(self.verify_integrity)
@@ -303,12 +330,25 @@ class MetadataViewer(QWidget):
         self.verify_integrity_btn.setToolTip(
             "Compare current file checksums against a saved checksums.json."
         )
-        button_layout.addWidget(self.verify_integrity_btn)
+        integrity_group_layout.addWidget(self.verify_integrity_btn)
 
-        layout.addLayout(button_layout)
+        integrity_group.setLayout(integrity_group_layout)
+        sidebar_layout.addWidget(integrity_group)
 
-        # === Content row: collapsible thumbnail preview + tabbed metadata ===
-        content_layout = QHBoxLayout()
+        view_group = QGroupBox("View")
+        view_group_layout = QVBoxLayout()
+
+        self.toggle_preview_btn = QPushButton("Hide Preview")
+        self.toggle_preview_btn.setCheckable(True)
+        self.toggle_preview_btn.clicked.connect(self.toggle_preview_panel)
+        view_group_layout.addWidget(self.toggle_preview_btn)
+
+        view_group.setLayout(view_group_layout)
+        sidebar_layout.addWidget(view_group)
+
+        sidebar_layout.addStretch()
+        sidebar_widget.setLayout(sidebar_layout)
+        content_layout.addWidget(sidebar_widget)
 
         self.preview_panel = QWidget()
         preview_layout = QVBoxLayout()
@@ -324,11 +364,6 @@ class MetadataViewer(QWidget):
         preview_layout.addStretch()
         self.preview_panel.setLayout(preview_layout)
         content_layout.addWidget(self.preview_panel)
-
-        self.toggle_preview_btn = QPushButton("Hide Preview")
-        self.toggle_preview_btn.setCheckable(True)
-        self.toggle_preview_btn.clicked.connect(self.toggle_preview_panel)
-        button_layout.addWidget(self.toggle_preview_btn)
 
         # === Metadata display — tabbed view ===
         self.tab_widget = QTabWidget()

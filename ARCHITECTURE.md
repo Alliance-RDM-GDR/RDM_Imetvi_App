@@ -73,6 +73,18 @@ does not require touching the UI layout or any other format's code.
   different concerns that change independently — a label can be tweaked
   without touching what data is extracted.
 
+### UI layout
+
+`MetadataViewer.__init__()` builds three regions top to bottom/left to
+right: a top row of format/context selectors, a left action sidebar
+(`QGroupBox` sections — File, Export, Write-back, Integrity, View — each
+holding the buttons for that concern instead of one long horizontal row),
+and a content row with the collapsible thumbnail preview panel followed
+by the three-tab metadata display. Buttons are grouped by *what they act
+on* (a loaded file's export vs. its write-back vs. its integrity record),
+not by when they were added — a new action should join an existing group
+if one fits before a new one is created.
+
 ---
 
 ## Format / context registries (`main.py`)
