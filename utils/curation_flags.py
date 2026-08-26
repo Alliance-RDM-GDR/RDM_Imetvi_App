@@ -26,10 +26,15 @@ def _mode(values):
 
 
 def _has_gps(standardized_metadata):
-    return any(
-        "gps" in k.lower() or k in {"GPSLatitude", "GPSLongitude", "GPS_Latitude", "GPS_Longitude"}
-        for k in standardized_metadata
-    )
+    for k, v in standardized_metadata.items():
+        if "gps" not in k.lower() and k not in {"GPSLatitude", "GPSLongitude", "GPS_Latitude", "GPS_Longitude"}:
+            continue
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        return True
+    return False
 
 
 def _dimensions(standardized_metadata):

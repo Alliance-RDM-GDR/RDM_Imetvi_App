@@ -7,6 +7,22 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Fix HAS_GPS_DATA false positive
+
+- `utils/curation_flags.py::_has_gps()` flagged any file whose
+  standardized metadata contained a GPS-named key, regardless of value.
+  `standardizers/jpg_general_standardizer.py` always emits
+  `GPSLatitude`/`GPSLongitude` keys (empty strings when the source has no
+  GPS EXIF block), so every JPG was flagged `HAS_GPS_DATA` even with "No
+  EXIF data found" in the Raw Metadata tab.
+- Fixed `_has_gps()` to also require the matched value be non-empty
+  (skips `None` and blank/whitespace-only strings).
+- Added `test_no_gps_flag_when_keys_present_but_empty` and
+  `..._but_none` to `tests/test_curation_flags.py` covering the exact
+  false-positive shape.
+- Verified interactively: a solid-color test JPG with no EXIF now shows
+  "✔ OK — no issues detected" instead of the false `HAS_GPS_DATA` flag.
+
 ## 2026-08-26 — Expected-fields checking (D1)
 
 - Added `metadata_profiles/required_fields_registry.py`:

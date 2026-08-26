@@ -47,6 +47,25 @@ def test_no_gps_flag_when_absent(synthetic_tiff):
     assert "HAS_GPS_DATA" not in flags_by_path[synthetic_tiff]
 
 
+def test_no_gps_flag_when_keys_present_but_empty(synthetic_jpg):
+    # jpg_general_standardizer.py always emits GPSLatitude/GPSLongitude
+    # keys, even when the source file has no GPS EXIF block — an empty
+    # string must not be treated as "has GPS data".
+    meta = {"GPSLatitude": "", "GPSLongitude": ""}
+    results = [_make_result(synthetic_jpg, meta=meta)]
+    flags_by_path, _ = compute_curation_flags(results)
+
+    assert "HAS_GPS_DATA" not in flags_by_path[synthetic_jpg]
+
+
+def test_no_gps_flag_when_keys_present_but_none(synthetic_jpg):
+    meta = {"GPSLatitude": None, "GPSLongitude": None}
+    results = [_make_result(synthetic_jpg, meta=meta)]
+    flags_by_path, _ = compute_curation_flags(results)
+
+    assert "HAS_GPS_DATA" not in flags_by_path[synthetic_jpg]
+
+
 def test_dimension_outlier_flagged(synthetic_jpg, synthetic_tiff, tmp_path):
     # Two files with same dims + one outlier
     copy1 = str(tmp_path / "a.jpg")
