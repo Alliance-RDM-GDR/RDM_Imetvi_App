@@ -212,6 +212,12 @@ class FolderLoadWorker(QThread):
         self.finished.emit(results)
 
 
+# Shared width for the left column (sidebar + thumbnail preview below it) —
+# the thumbnail is sized to match so it fills the column's full width while
+# staying square, instead of leaving blank space on either side.
+SIDEBAR_WIDTH = 260
+
+
 class MetadataViewer(QWidget):
     def __init__(self):
         super().__init__()
@@ -282,7 +288,7 @@ class MetadataViewer(QWidget):
         left_column_layout.setContentsMargins(0, 0, 0, 0)
 
         sidebar_widget = QWidget()
-        sidebar_widget.setFixedWidth(260)
+        sidebar_widget.setFixedWidth(SIDEBAR_WIDTH)
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -374,7 +380,7 @@ class MetadataViewer(QWidget):
 
         self.thumbnail_display = QLabel()
         self.thumbnail_display.setAlignment(Qt.AlignCenter)
-        self.thumbnail_display.setFixedSize(160, 160)
+        self.thumbnail_display.setFixedSize(SIDEBAR_WIDTH, SIDEBAR_WIDTH)
         self.thumbnail_display.setStyleSheet(
             "border: 1px solid palette(mid); background: palette(base);"
         )
@@ -490,7 +496,7 @@ class MetadataViewer(QWidget):
             pixmap = QPixmap()
             pixmap.loadFromData(thumb_bytes)
             self.thumbnail_display.setPixmap(
-                pixmap.scaled(160, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                pixmap.scaled(SIDEBAR_WIDTH, SIDEBAR_WIDTH, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
         else:
             self.thumbnail_display.setPixmap(QPixmap())

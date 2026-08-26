@@ -7,6 +7,21 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Widen thumbnail preview to fill the sidebar column
+
+The preview box stayed at its old 160×160 size after the sidebar widened
+to 260px in the previous change, leaving blank space on either side
+instead of filling the column.
+
+- `main.py`: added a shared `SIDEBAR_WIDTH = 260` module constant, used
+  for the sidebar's fixed width, the thumbnail label's size
+  (`SIDEBAR_WIDTH × SIDEBAR_WIDTH`), and the pixmap scale target — so the
+  preview box now fills the full column width while staying square, and
+  the three values can't drift out of sync if the width changes again.
+- Verified interactively: preview box now spans the sidebar's full
+  width; a loaded image scales to fit (aspect ratio preserved, so a
+  non-square source letterboxes within the square box, as expected).
+
 ## 2026-08-26 — Fix truncated French button labels (sidebar layout)
 
 The user reported that French button labels ("Écrire les métadonnées
