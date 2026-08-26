@@ -1,0 +1,223 @@
+# IMetVi — Architecture
+
+This document describes how the codebase is organized and how a file moves
+from disk to the screen (and back, when metadata is written or exported).
+It complements [`README.md`](README.md) (what the app does) and
+[`ROADMAP.md`](ROADMAP.md) (what's planned/in progress). See
+[`UPDATES.md`](UPDATES.md) for a chronological changelog.
+
+---
+
+## Design principle: thin UI, explicit data flow
+
+`main.py` is UI wiring only — it never parses file bytes itself. Every other
+concern (reading a format, mapping it to a standard, labeling it for
+display, writing it back) lives in its own module, and no module holds
+global state. Data is passed explicitly between functions as plain dicts.
+
+This keeps each new format additive: adding one means writing a parser, a
+standardizer, and a profile, then registering all three in `main.py`. It
+does not require touching the UI layout or any other format's code.
+
+---
+
+## The five-layer pipeline
+
+```
+   image file
+       │
+       ▼
+┌─────────────┐   parser contract: (file_path, application=None) -> (text_report: str, raw_metadata: dict)
+│   PARSER    │   metadata_parsers/*.py
+└─────────────┘   Reads the file with a format-specific library (tifffile, czifile,
+       │          Pillow/piexif, rasterio, h5py, pydicom, astropy.io.fits, readlif).
+       │          Never raises past its own boundary — catches exceptions and
+       │          returns a partial result with the error in the text report.
+       ▼
+┌─────────────┐   standardizer contract: (raw_metadata: dict) -> standardized_metadata: dict
+│ STANDARDIZER│   standardizers/*.py
+└─────────────┘   Maps format-specific raw keys onto a small set of
+       │          discipline-aligned field names (REMBI, ISO 19115, EXIF/IPTC,
+       │          DICOM, FITS, HDF5/CF) so the UI can render any format
+       │          through the same code path.
+       ▼
+┌─────────────┐   PROFILE_REGISTRY[context] -> {raw_key: {"label": str, "unit": str|None}}
+│   PROFILE   │   metadata_profiles/*_profile.py, metadata_profiles/profile_registry.py
+└─────────────┘   Turns a standardized key into a human-readable label with
+       │          units for the "Recommended Fields" tab. Falls back to the
+       │          raw key name if unregistered — never hides a field.
+       ▼
+┌─────────────┐   STANDARDS_REGISTRY[context] -> {standard_name, reference_url, covered, not_covered}
+│  STANDARDS  │   metadata_profiles/standards_registry.py
+└─────────────┘   Documents which fields of the target standard the app
+       │          actually captures vs. what must be supplied separately
+       │          (e.g. REMBI Biosample fields are never in the image file).
+       │          Shown via the "Metadata Standard Info" dialog.
+       ▼
+┌─────────────┐
+│   main.py   │   Registers each format/context pair, drives the QTabWidget
+│  (UI wiring)│   display (Raw / Recommended / Curation), and dispatches to
+└─────────────┘   export, write-back, sidecar, and integrity utilities.
+```
+
+### Why this shape
+
+- **Parser contract is uniform** (`text_report, raw_metadata`) so `main.py`
+  never branches on format when calling a parser — it looks up the function
+  in `FORMAT_REGISTRY` and calls it.
+- **Standardizer output is uniform** (flat dict of discipline-aligned keys)
+  so curation flags, exports, and the profile lookup all work identically
+  regardless of source format.
+- **Profile and standards registries are separate** from the standardizer
+  because "how to label a field" and "what a standard requires" are
+  different concerns that change independently — a label can be tweaked
+  without touching what data is extracted.
+
+---
+
+## Format / context registries (`main.py`)
+
+Three module-level dicts in `main.py` wire everything together:
+
+```python
+FORMAT_REGISTRY = {
+    "TIFF": {"extensions": [...], "parser": parse_tiff_metadata, "contexts": ["Microscopy"]},
+    ...
+}
+CONTEXT_REGISTRY = {
+    "Microscopy": {"standardizer": standardize_tiff_microscopy_metadata},
+    ...
+}
+FORMAT_STANDARDIZERS = {
+    "TIFF": standardize_tiff_microscopy_metadata,
+    "CZI":  standardize_czi_microscopy_metadata,   # same context, different standardizer
+    ...
+}
+```
+
+`CONTEXT_REGISTRY` exists separately from `FORMAT_STANDARDIZERS` because a
+context (e.g. "Microscopy") can be reached by more than one format (TIFF or
+CZI), each needing its own standardizer — the format dropdown picks the
+parser, and `FORMAT_STANDARDIZERS[format_name]` picks the matching
+standardizer for whichever context is active.
+
+Loading a file:
+1. `select_format_for_extension()` auto-selects a format whose registered
+   extensions match the file, narrowing the format dropdown.
+2. `process_file()` (single file) or `FolderLoadWorker` (batch, runs in a
+   `QThread` so the UI stays responsive) calls the parser, then the
+   standardizer, then attaches `_StandardReference` and curation flags.
+3. `render_metadata()` fills the three tabs using `format_label()` from the
+   active profile.
+
+### Currently registered formats
+
+| Format | Extensions | Context | Parser | Standardizer |
+|---|---|---|---|---|
+| TIFF | `.tif .tiff` | Microscopy | `tiff_parser.py` | `tiff_microscopy_standardizer.py` |
+| CZI | `.czi` | Microscopy | `czi_parser.py` | `czi_microscopy_standardizer.py` |
+| OME-TIFF | `.tif .tiff` | Microscopy (OME) | `ome_tiff_parser.py` | `ome_microscopy_standardizer.py` |
+| GeoTIFF | `.tif .tiff` | Remote Sensing | `geotiff_parser.py` | `geotiff_remote_sensing_standardizer.py` |
+| JPG | `.jpg .jpeg` | General / EXIF | `jpg_parser.py` | `jpg_general_standardizer.py` |
+| PNG | `.png` | General / EXIF | `png_parser.py` | `png_general_standardizer.py` |
+| DICOM | `.dcm` | Medical Imaging | `dicom_parser.py` | `dicom_medical_standardizer.py` |
+| FITS | `.fits .fit` | Astronomy | `fits_parser.py` | `fits_astronomy_standardizer.py` |
+| HDF5 | `.h5 .hdf5 .nc4` | General / HDF5 | `hdf5_parser.py` | `hdf5_general_standardizer.py` |
+| LIF | `.lif` | Microscopy (Leica) | `lif_parser.py` | `lif_microscopy_standardizer.py` |
+
+Three formats share the `.tif`/`.tiff` extension (TIFF, OME-TIFF, GeoTIFF) —
+the format dropdown lets the user pick which interpretation applies; the
+app does not try to auto-detect OME-XML or GeoTIFF tags to switch formats
+automatically (GeoTIFF parsing does fall back to plain TIFF if no CRS is
+found, see `geotiff_parser.py`).
+
+---
+
+## Directory layout
+
+```
+main.py                        UI wiring only — no parsing logic
+metadata_parsers/              One file per format; parser contract only
+metadata_profiles/             Label/unit dicts + profile_registry.py + standards_registry.py
+standardizers/                 One file per format/context pair; standardizer contract only
+utils/
+    serialization.py           make_json_serializable() — numpy scalar/array -> JSON-safe types
+    curation_flags.py          DUPLICATE / CORRUPT / HAS_GPS_DATA / DIMENSION_OUTLIER / LOSSY_TIFF
+    metadata_writer.py         Writes EXIF/IPTC/XMP (JPEG) and ImageDescription JSON (TIFF) back to file
+    sidecar.py                 Writes/reads a standardized-metadata .json beside the source image
+    integrity.py                MD5 + checksums.json persistence and cross-session verification
+    nested_parser.py           Nested-dict flattening helper
+tests/                         pytest; one test module roughly per source module
+docs/                          Screenshots
+output/                        Runtime export output (gitignored content)
+templates/                     Reserved for D1 (metadata templates) — currently empty
+ROADMAP.md                     Task-tracked development plan
+UPDATES.md                     Chronological changelog (human-readable)
+
+```
+
+---
+
+## Curation layer (`utils/curation_flags.py`)
+
+A second pass, orthogonal to the standardizer, that flags files needing a
+curator's attention. Runs once per batch (or once for a single file, with
+reduced power — `DUPLICATE`/`DIMENSION_OUTLIER` need multiple files to be
+meaningful) and attaches `_CurationFlags` and `_MD5Checksum` to each
+standardized metadata dict:
+
+| Flag | Trigger |
+|---|---|
+| `DUPLICATE` | MD5 checksum matches another file in the same batch |
+| `CORRUPT` | Parser reported a read failure in its text report |
+| `HAS_GPS_DATA` | Any GPS-related key present (privacy/consent flag) |
+| `DIMENSION_OUTLIER` | Image dimensions deviate from the batch's most common (mode) dimensions |
+| `LOSSY_TIFF` | TIFF container using JPEG compression internally (Compression tag 6 or 7) |
+
+This logic was adapted from `CUR_Res_CurationTools/Scripts/Inspect_Images_Script.R`
+so IMetVi's curation report stays compatible with that pipeline's output
+shape for downstream ingestion tooling (FRDR, Archivematica, DSpace).
+
+---
+
+## Write-back and export paths
+
+Three distinct ways metadata leaves (or is written back into) the app,
+each solving a different curator workflow:
+
+- **`utils/metadata_writer.py`** — writes metadata *into* the original
+  image file. JPEG gets EXIF (piexif) + IPTC IIM (iptcinfo3) + XMP (manual
+  APP1 packet injection, chosen over `python-xmp-toolkit` to avoid a
+  Windows-hostile `libexempi` dependency). TIFF gets the standardized
+  metadata JSON-encoded into the `ImageDescription` tag via `tifffile`.
+  Gated behind a confirmation dialog in `main.py::write_metadata()` since
+  it overwrites the source file.
+- **`utils/sidecar.py`** — writes a `<basename>.json` *beside* the image,
+  never touching the original. Matches the GIS/repository convention of a
+  co-located metadata record (QGIS, ArcGIS, FRDR deposits).
+- **`export_as_json` / `export_as_csv` / `export_curation_report`
+  (in `main.py`)** — batch exports to a user-chosen path, decoupled from
+  any single file's location.
+
+`utils/integrity.py` is a fourth, session-spanning mechanism: it persists
+a `checksums.json` manifest per folder (`Save Checksums`) and diffs a later
+scan against it (`Verify Integrity`), classifying each file as
+`OK` / `MODIFIED` / `MISSING` / `NEW` — independent of the curation layer's
+same-session `DUPLICATE` flag, which only compares files within one batch.
+
+---
+
+## Testing approach
+
+Every parser, standardizer, and utility module has a matching
+`tests/test_*.py`. Formats without a practical way to author a real binary
+fixture (LIF — `readlif` has no write API) are tested by mocking the
+third-party reader object (`unittest.mock`) for the happy path, plus a real
+missing-file case for the error path, so the parser's own logic is
+exercised without needing Leica acquisition software.
+
+Run the full suite with:
+
+```bash
+python -m pytest -q
+```

@@ -1,58 +1,68 @@
 # Image Metadata Viewer (IMetVi)
 
-**IMetVi** is a cross-format desktop application for extracting, displaying, and exporting image metadata. It currently supports TIFF and CZI image formats and is optimized for use in the context of the **REMBI** (Recommended Metadata for Biological Images) guidelines.
+**IMetVi** is a cross-format desktop application for extracting,
+standardizing, displaying, exporting, and curating scientific image
+metadata. It targets researchers, librarians, and research technicians
+working with microscopy, remote sensing, medical, astronomical, and
+general-purpose image files in Canadian academic institutions.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the codebase is
+organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
+[`UPDATES.md`](UPDATES.md) for a chronological changelog.
 
 ## Features
 
-- 🧠 **Application context support**: Tailored display for *Microscopy* metadata.
-- 🖼️ **Supported formats**: 
-  - `TIFF`
-  - `CZI` (Zeiss proprietary format)
-- 📁 Load a single file or a folder of image files
-- 🧾 View and compare:
-  - Raw metadata (left panel)
-  - Standardized recommended metadata (right panel)
-- 💾 Export metadata:
-  - JSON (human- and machine-readable)
-  - CSV (tabular format, suitable for spreadsheets or further processing)
-- 📊 Handles **multi-channel images**, including:
-  - Fluorophore names
-  - Excitation and emission wavelengths
-  - Exposure time (in seconds)
+- 🖼️ **Supported formats**, each mapped to a discipline-aligned standard:
+
+  | Format | Extensions | Standard |
+  |---|---|---|
+  | TIFF | `.tif` `.tiff` | REMBI (microscopy) |
+  | CZI (Zeiss) | `.czi` | REMBI (microscopy) |
+  | OME-TIFF | `.tif` `.tiff` | OME-XML |
+  | GeoTIFF | `.tif` `.tiff` | ISO 19115 (geospatial) |
+  | JPG / JPEG | `.jpg` `.jpeg` | EXIF + IPTC + XMP |
+  | PNG | `.png` | EXIF-style general fields |
+  | DICOM | `.dcm` | DICOM PS3.3 (patient-identifying fields excluded by design) |
+  | FITS | `.fits` `.fit` | FITS / WCS (astronomy) |
+  | HDF5 | `.h5` `.hdf5` `.nc4` | Generic container inspection |
+  | LIF (Leica) | `.lif` | REMBI (microscopy) |
+
+  Formats sharing an extension (TIFF / OME-TIFF / GeoTIFF all use
+  `.tif`/`.tiff`) are selected explicitly via the format dropdown, which
+  auto-suggests a match on load.
+
+- 📁 Load a single file or an entire folder (batch loading runs off the UI
+  thread with a progress bar).
+- 🧾 **Three-tab metadata view**:
+  - *Raw Metadata* — everything the parser extracted, unfiltered.
+  - *Recommended Fields* — standardized, discipline-aligned fields with
+    human-readable labels and units.
+  - *Curation* — automated flags and integrity info for this file.
+- ℹ️ **Metadata Standard Info** dialog — for the active context, shows
+  what the target standard requires and honestly reports what is (and
+  isn't) captured from the file itself.
+- 🚩 **Curation flags**, computed per batch:
+  - `DUPLICATE` — identical MD5 checksum to another file in the batch
+  - `CORRUPT` — parser reported a read failure
+  - `HAS_GPS_DATA` — GPS metadata present (privacy/consent flag)
+  - `DIMENSION_OUTLIER` — dimensions deviate from the batch's most common size
+  - `LOSSY_TIFF` — TIFF using internal JPEG compression
+- ✍️ **Write metadata back into the file** (JPEG: EXIF + IPTC + XMP; TIFF:
+  `ImageDescription`), with an editable form and an overwrite confirmation.
+- 📎 **Save Sidecar JSON** — writes `<basename>.json` beside the source
+  image without touching the original (QGIS/ArcGIS/repository convention).
+- 🔒 **Cross-session integrity verification** — `Save Checksums` persists
+  a `checksums.json` manifest per folder; `Verify Integrity` re-scans and
+  reports `OK` / `MODIFIED` / `MISSING` / `NEW` per file.
+- 💾 **Export**:
+  - Standardized metadata as JSON or CSV (single file or full batch)
+  - Dedicated **Curation Report** CSV (one row per file, curation-focused
+    columns, compatible with `CUR_Res_CurationTools` report shape)
 
 ## Screenshot
 
-> ![IMetVi GUI](docs/AppImage.png.png)  
+> ![IMetVi GUI](docs/AppImage.png)
 > *Example showing TIFF metadata extraction with four channels*
-
----
-
-## Standardized Metadata Fields
-
-The following metadata fields are extracted (if available) and exported in standardized format:
-
-| Field             | Description                                                                 |
-|------------------|-----------------------------------------------------------------------------|
-| `ImageName`       | File name of the image                                                      |
-| `AcquisitionTime` | ISO-formatted timestamp of acquisition                                      |
-| `DimensionX/Y`    | Image dimensions in pixels                                                  |
-| `SizeZ`, `SizeT`  | Number of Z-slices and time points                                          |
-| `DefaultUnitFormat` | Unit of spatial calibration (e.g. `microns`)                            |
-| `PixelSizeX/Y/Z`  | Pixel size in calibrated units (e.g. microns per pixel)                     |
-| `BitDepth`        | Bit depth of each channel                                                   |
-| `ObjectiveName`   | Microscope objective model                                                  |
-| `NA`              | Numerical Aperture of the objective lens                                    |
-| `Magnification`   | Total magnification including eyepiece zoom                                 |
-| `MicroscopeName`  | Microscope model name                                                       |
-| `MicroscopeType`  | Microscope orientation (e.g. `Upright`, `Inverted`)                         |
-| `DetectorName`    | Name of the detector                                                        |
-| `DetectorModel`   | Detector model (e.g. camera model)                                          |
-| `LightSource`     | Illumination source (if available)                                          |
-| `Channels`        | List of channels, including:  
-  - `Name`: Fluorophore  
-  - `ExcitationWavelength`, `EmissionWavelength`  
-  - `ExposureTime_sec` (converted from nanoseconds where needed)                                  |
-| `ContourType`     | Shape of the sample area (e.g. `Rectangle`)                                |
 
 ---
 
@@ -62,20 +72,24 @@ The following metadata fields are extracted (if available) and exported in stand
 
 - Python 3.8+
 - Tested on Windows 10/11
-- Recommended: run within a conda environment
+- Recommended: run within a conda or venv environment
 
 ### Dependencies
 
 ```bash
-pip install pyqt5 czifile tifffile numpy
+pip install -r requirements.txt
 ```
 
 ### Launch the App
 
-Clone the repository and run:
-
 ```bash
 python main.py
+```
+
+### Run the tests
+
+```bash
+python -m pytest -q
 ```
 
 ---
@@ -87,6 +101,16 @@ This project is licensed under the MIT License. See LICENSE for details.
 
 ## Acknowledgements
 
-    - Zeiss CZI Reader: Powered by czifile
-    - TIFF Handling: Powered by tifffile
-    - REMBI Guidelines: https://doi.org/10.1038/s41592-021-01166-8
+- TIFF handling: [tifffile](https://github.com/cgohlke/tifffile)
+- Zeiss CZI reader: [czifile](https://github.com/cgohlke/czifile)
+- Leica LIF reader: [readlif](https://github.com/nimne/readlif)
+- EXIF read/write: [Pillow](https://python-pillow.org/) + [piexif](https://piexif.readthedocs.io/)
+- IPTC read/write: [iptcinfo3](https://github.com/jkelleyrtp/iptcinfo3)
+- GeoTIFF / geospatial: [rasterio](https://rasterio.readthedocs.io/)
+- HDF5: [h5py](https://www.h5py.org/)
+- DICOM: [pydicom](https://pydicom.github.io/)
+- FITS: [astropy](https://www.astropy.org/)
+- REMBI Guidelines: https://doi.org/10.1038/s41592-021-01166-8
+- OME-XML spec: https://www.openmicroscopy.org/ome-files/
+- ISO 19115 (geospatial metadata): https://www.iso.org/standard/53798.html
+- IPTC standard: https://www.iptc.org/std/photometadata/specification/

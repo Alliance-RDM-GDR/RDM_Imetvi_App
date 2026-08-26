@@ -9,4 +9,5 @@ h5py>=3.9
 iptcinfo3>=2.1
 pydicom>=2.4
 astropy>=5.3
+readlif>=0.6.6
 pytest>=7.4
