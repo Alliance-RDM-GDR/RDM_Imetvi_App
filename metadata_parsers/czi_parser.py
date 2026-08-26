@@ -4,6 +4,33 @@ import czifile
 import xml.etree.ElementTree as ET
 import os
 
+
+def _meters_to_micrometers(value_str):
+    """Converts a CZI Scaling/Distance value (meters) to micrometers."""
+    if not value_str:
+        return ""
+    try:
+        return str(float(value_str) * 1e6)
+    except (TypeError, ValueError):
+        return ""
+
+
+def _clean_numerical_aperture(value_str):
+    """
+    Zeiss CZI writes -1 as its sentinel for "not calibrated" on objectives
+    without a defined NA in the instrument database (seen on generic/low-
+    power objectives like "Achromat S 1.0x"). A real NA is always > 0, so
+    treat any non-positive value as absent rather than showing a
+    physically impossible negative number as if it were real data.
+    """
+    if not value_str:
+        return ""
+    try:
+        return value_str if float(value_str) > 0 else ""
+    except (TypeError, ValueError):
+        return ""
+
+
 def parse_czi_metadata(file_path, application="Microscopy"):
     """
     Parse CZI metadata for Microscopy application.
@@ -47,13 +74,20 @@ def parse_czi_metadata(file_path, application="Microscopy"):
     extracted_metadata["SizeT"] = root.findtext(".//SizeT", default="")  # SizeT if available
 
     # === Pixel Sizes ===
+    # Zeiss CZI stores Scaling/Items/Distance/Value in meters (the SI base
+    # unit) regardless of the sibling <DefaultUnitFormat> element, which is
+    # only a display hint (commonly "µm") — not a statement that Value is
+    # already expressed in that unit. Converting here keeps PixelSizeX/Y/Z
+    # in micrometers everywhere downstream (matching the profile label and
+    # every other format's convention), instead of silently understating
+    # the true pixel size by a factor of 1e6.
     scale_x = root.findtext(".//Scaling/Items/Distance[@Id='X']/Value")
     scale_y = root.findtext(".//Scaling/Items/Distance[@Id='Y']/Value")
     scale_z = root.findtext(".//Scaling/Items/Distance[@Id='Z']/Value")
 
-    extracted_metadata["PixelSizeX"] = scale_x if scale_x else ""
-    extracted_metadata["PixelSizeY"] = scale_y if scale_y else ""
-    extracted_metadata["PixelSizeZ"] = scale_z if scale_z else ""
+    extracted_metadata["PixelSizeX"] = _meters_to_micrometers(scale_x)
+    extracted_metadata["PixelSizeY"] = _meters_to_micrometers(scale_y)
+    extracted_metadata["PixelSizeZ"] = _meters_to_micrometers(scale_z)
 
     # === BitDepth ===
     bit_depth = root.findtext(".//ComponentBitCount")
@@ -64,7 +98,8 @@ def parse_czi_metadata(file_path, application="Microscopy"):
     objective_node = root.find(".//ChangerElements/Objective")
     if objective_node is not None:
         extracted_metadata["ObjectiveName"] = objective_node.attrib.get("Name", "")
-        extracted_metadata["NA"] = root.findtext(".//ChangerElements/Objective/NumericalAperture", default="")
+        raw_na = root.findtext(".//ChangerElements/Objective/NumericalAperture", default="")
+        extracted_metadata["NA"] = _clean_numerical_aperture(raw_na)
 
     # === Microscope Name and Type ===
     microscope_node = root.find(".//Microscopes/Microscope")

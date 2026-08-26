@@ -7,6 +7,49 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Fix CZI pixel size unit bug and NA sentinel (REMBI review)
+
+The user asked whether a CZI file's metadata was correct and complete
+against REMBI. Rather than eyeballing it, dumped and inspected the file's
+raw OME/Zeiss XML directly (`czifile.CziFile(...).metadata()`) to confirm
+findings against ground truth instead of assumption.
+
+- **🔴 Pixel size understated by 1,000,000×.** Zeiss's
+  `Scaling/Items/Distance/Value` is in meters; the sibling
+  `<DefaultUnitFormat>µm</DefaultUnitFormat>` is only a display-formatting
+  hint, not a claim that `Value` is already in micrometers.
+  `metadata_parsers/czi_parser.py` was passing the raw meters value
+  straight through into `PixelSizeX/Y/Z`, which the profile labels
+  `(µm)` — so a real 4.66 µm/pixel (confirmed against the camera's known
+  ~4.65 µm native pixel pitch) displayed as `4.66e-06`. Added
+  `_meters_to_micrometers()`, applied at parse time. REMBI requires
+  accurate spatial calibration as core Image Acquisition metadata — this
+  silently corrupted it for every CZI file.
+- **🟠 NA of -1 shown as if real.** Zeiss writes `-1` into
+  `NumericalAperture` as its sentinel for "not calibrated" on objectives
+  without a defined NA in the instrument database (confirmed: this
+  file's `Objective Name` is `Achromat S 1.0x`, a generic objective with
+  no catalog NA entry). Added `_clean_numerical_aperture()`, which drops
+  any value ≤ 0 (a real NA is always positive). This also makes the D1
+  expected-fields check work correctly for NA — it now flags "Numerical
+  Aperture" as genuinely missing instead of silently accepting `-1` as
+  populated data.
+- Confirmed as genuine gaps in the *source file*, not app bugs (verified
+  these XML elements are simply absent): `AcquisitionDateAndTime`,
+  `SizeZ`/`SizeT` (a single 2D snapshot, no Z-stack/timelapse recorded),
+  the channel's fluorophore name, and `MicroscopeName` = `"No Connection"`
+  (Zeiss's own placeholder for an unconfigured/disconnected microscope
+  stand at acquisition time). These are real REMBI-completeness gaps for
+  the researcher to address at the source, not something IMetVi can
+  recover after the fact.
+- Added `tests/test_czi_parser.py` — no CZI-specific tests existed
+  before this (11 new tests: the two helper functions directly, plus the
+  standardizer against a representative raw_metadata dict, since czifile
+  has no write API for a synthetic fixture, same constraint as LIF).
+- Verified against the user's actual file: pixel size now shows `4.6623`
+  µm, NA is blank, and the D1 missing-fields banner correctly reads
+  "⚠ Missing required fields: Numerical Aperture."
+
 ## 2026-08-26 — Fix color bleed across files in Recommended Fields
 
 Found while reviewing a CZI file right after a NetCDF file with several

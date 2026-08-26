@@ -245,6 +245,33 @@ adds them as a `MissingFields` column. HDF5 has no registry entry — its
 standardized output is a dataset inventory, not a fixed scalar field set,
 so "missing field" doesn't apply the same way.
 
+## CZI unit conversion and sentinel handling
+
+`metadata_parsers/czi_parser.py` corrects two values Zeiss's CZI XML
+stores in ways that are easy to misread if copied verbatim:
+
+- **Pixel size is in meters.** `Scaling/Items/Distance/Value` is always
+  in the SI base unit (meters); the sibling `<DefaultUnitFormat>`
+  element (commonly `µm`) is a *display* hint, not a statement about
+  `Value`'s actual unit. `_meters_to_micrometers()` converts at parse
+  time so `PixelSizeX/Y/Z` are in micrometers everywhere downstream,
+  matching the profile's `(µm)` label.
+- **NA of `-1` is Zeiss's sentinel for "not calibrated."** Objectives
+  without a defined numerical aperture in the instrument database (e.g.
+  generic/low-power objectives) get `-1` written into
+  `NumericalAperture`, not an empty element. `_clean_numerical_aperture()`
+  treats any value ≤ 0 as absent, so the app doesn't display a physically
+  impossible negative NA as if it were real data — and so the D1
+  expected-fields check (`REQUIRED_FIELDS_REGISTRY["CZI"]` includes
+  `"NA"`) correctly flags it as missing rather than silently accepting
+  `-1` as a populated value.
+
+Both were confirmed against a real CZI file (`czi.metadata()` dumped and
+inspected directly) rather than assumed from documentation — the
+uncorrected pixel size was off by a factor of 1e6 (`4.66e-06` shown where
+`4.66` µm/pixel was correct, consistent with the camera's known ~4.65 µm
+native pixel pitch).
+
 ## Structured list fields in Recommended Fields
 
 Some standardized fields are lists rather than scalars — TIFF/CZI
