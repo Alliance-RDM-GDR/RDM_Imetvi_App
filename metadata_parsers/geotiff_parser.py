@@ -58,6 +58,16 @@ def parse_geotiff_metadata(file_path, application=None):
             raw_metadata["BandDescriptions"] = list(ds.descriptions)
             raw_metadata["Width"] = ds.width
             raw_metadata["Height"] = ds.height
+            # Band data type (e.g. float32, uint8) — every other format in
+            # this app reports a bit depth/data type; GeoTIFF previously
+            # omitted it even though rasterio exposes it directly.
+            raw_metadata["DataType"] = str(ds.dtypes[0]) if ds.dtypes else ""
+            # PixelIsArea vs PixelIsPoint (GeoTIFF spec, GTRasterTypeGeoKey) —
+            # whether a coordinate refers to a pixel's center or its corner,
+            # which matters for sub-pixel georeferencing precision. Often
+            # absent in practice (not every writer sets it), so this is
+            # informational rather than a required field.
+            raw_metadata["PixelInterpretation"] = ds.tags().get("AREA_OR_POINT", "")
 
             for key, value in raw_metadata.items():
                 if key == "FilePath":

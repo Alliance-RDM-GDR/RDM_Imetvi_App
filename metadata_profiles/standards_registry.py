@@ -51,7 +51,8 @@ STANDARDS_REGISTRY = {
         "secondary_label": "FGDC — ISO geospatial metadata overview",
         "covered": [
             "Spatial reference: CRS (EPSG code, WKT), bounding box, pixel "
-            "resolution, band count and descriptions, no-data value.",
+            "resolution, band count and descriptions, no-data value, band "
+            "data type, pixel interpretation (area vs. point, when set).",
         ],
         "not_covered": [
             "Lineage/provenance (processing history), distribution and "

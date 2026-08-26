@@ -44,6 +44,8 @@ def test_standardize_geotiff_remote_sensing_maps_fields():
         "BandDescriptions": ["red", "green", "blue"],
         "Width": 100,
         "Height": 100,
+        "DataType": "uint16",
+        "PixelInterpretation": "Area",
     }
 
     result = standardize_geotiff_remote_sensing_metadata(raw_metadata)
@@ -53,6 +55,8 @@ def test_standardize_geotiff_remote_sensing_maps_fields():
     assert result["BandCount"] == "3"
     assert result["BoundingBox_MaxX"] == "10"
     assert result["DimensionX"] == "100"
+    assert result["DataType"] == "uint16"
+    assert result["PixelInterpretation"] == "Area"
 
 
 def test_standardize_tiff_microscopy_handles_missing_fields():

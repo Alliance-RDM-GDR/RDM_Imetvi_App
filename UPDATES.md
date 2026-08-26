@@ -7,6 +7,39 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Add GeoTIFF band data type and pixel interpretation (ISO 19115 review)
+
+The user asked whether a GeoTIFF test file's metadata was correct and
+sufficient per ISO 19115. Verified the app's output against the file
+directly with a standalone `rasterio.open()` inspection (CRS, transform,
+resolution, bounds, dtype, band tags) rather than assuming correctness.
+
+- **Correct, verified against ground truth:** CRS (EPSG:2961 — NAD83(CSRS)
+  / UTM zone 20N), bounding box, and 1.0 m pixel resolution all matched
+  the file exactly; bounding box, resolution, and raster width/height were
+  also internally consistent (`(max_x - min_x) / pixel_size == width` and
+  the same for height) — a good sign the parser was correct here (unlike
+  the CZI unit bug from the same review session).
+- **Gap found: band data type was never extracted.** `rasterio` exposes
+  it directly (`ds.dtypes`), and every other format in the app (TIFF, CZI,
+  LIF) reports a bit depth/data type — GeoTIFF's omission was an
+  inconsistency, not a deliberate one. Added `DataType` to
+  `metadata_parsers/geotiff_parser.py`, the standardizer, the profile, and
+  `REQUIRED_FIELDS_REGISTRY["GeoTIFF"]` (so its absence would now be
+  correctly flagged if a file genuinely lacked it).
+- **Added: pixel interpretation (`AREA_OR_POINT`).** Whether a coordinate
+  refers to a pixel's center or corner (GeoTIFF's `GTRasterTypeGeoKey`)
+  matters for sub-pixel georeferencing precision. Added as
+  `PixelInterpretation`, informational only (not in the required list)
+  since many valid GeoTIFF writers never set this tag.
+- Updated `standards_registry.py`'s Remote Sensing "covered" list to
+  mention both new fields.
+- 3 new/extended tests (`tests/test_geotiff_parser.py`,
+  `tests/test_standardizers.py`).
+- Verified against the user's actual file: `Band Data Type: float32` and
+  `Pixel Interpretation: Area` both now appear in the Recommended Fields
+  tab, matching the direct `rasterio` inspection exactly.
+
 ## 2026-08-26 — Fix CZI pixel size unit bug and NA sentinel (REMBI review)
 
 The user asked whether a CZI file's metadata was correct and complete

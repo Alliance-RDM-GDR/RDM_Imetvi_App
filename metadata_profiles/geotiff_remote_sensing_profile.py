@@ -16,4 +16,6 @@ GEOTIFF_REMOTE_SENSING_PROFILE = {
     "BandDescriptions": {"label": "Band Descriptions", "unit": None},
     "DimensionX": {"label": "Image Width", "unit": "pixels"},
     "DimensionY": {"label": "Image Height", "unit": "pixels"},
+    "DataType": {"label": "Band Data Type", "unit": None},
+    "PixelInterpretation": {"label": "Pixel Interpretation", "unit": None},
 }

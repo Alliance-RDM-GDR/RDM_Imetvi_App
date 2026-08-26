@@ -33,7 +33,7 @@ REQUIRED_FIELDS_REGISTRY = {
     "GeoTIFF": [
         "CRS_EPSG", "BoundingBox_MinX", "BoundingBox_MinY",
         "BoundingBox_MaxX", "BoundingBox_MaxY",
-        "SpatialResolutionX", "SpatialResolutionY", "BandCount",
+        "SpatialResolutionX", "SpatialResolutionY", "BandCount", "DataType",
     ],
     "JPG": [
         "DimensionX", "DimensionY", "AcquisitionDate",

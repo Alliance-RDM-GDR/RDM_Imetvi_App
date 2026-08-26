@@ -245,6 +245,20 @@ adds them as a `MissingFields` column. HDF5 has no registry entry — its
 standardized output is a dataset inventory, not a fixed scalar field set,
 so "missing field" doesn't apply the same way.
 
+## GeoTIFF band data type and pixel interpretation
+
+`metadata_parsers/geotiff_parser.py` reports `DataType` (e.g.
+`float32`, from `rasterio`'s `ds.dtypes`) and `PixelInterpretation`
+(the GeoTIFF `AREA_OR_POINT` tag — whether a coordinate refers to a
+pixel's center or corner, GDAL's default is `"Area"`) alongside the
+CRS/bounding-box/resolution fields it already extracted. `DataType` was
+previously never captured at all — every other format in the app
+(TIFF, CZI, LIF) reports a bit depth/data type, so its absence from
+GeoTIFF was an inconsistency, not an intentional gap; `DataType` is now
+in `REQUIRED_FIELDS_REGISTRY["GeoTIFF"]`. `PixelInterpretation` stays
+informational only (not required) since many valid GeoTIFF writers
+never set the tag.
+
 ## CZI unit conversion and sentinel handling
 
 `metadata_parsers/czi_parser.py` corrects two values Zeiss's CZI XML

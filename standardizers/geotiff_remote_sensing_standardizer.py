@@ -28,6 +28,8 @@ def standardize_geotiff_remote_sensing_metadata(raw_metadata):
         "BandDescriptions": raw_metadata.get("BandDescriptions", []),
         "DimensionX": str(raw_metadata.get("Width", "")),
         "DimensionY": str(raw_metadata.get("Height", "")),
+        "DataType": raw_metadata.get("DataType", ""),
+        "PixelInterpretation": raw_metadata.get("PixelInterpretation", ""),
     }
 
     return dict_report
