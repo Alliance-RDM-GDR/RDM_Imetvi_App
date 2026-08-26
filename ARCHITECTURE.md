@@ -149,6 +149,7 @@ utils/
     metadata_writer.py         Writes EXIF/IPTC/XMP (JPEG) and ImageDescription JSON (TIFF) back to file
     sidecar.py                 Writes/reads a standardized-metadata .json beside the source image
     integrity.py                MD5 + checksums.json persistence and cross-session verification
+    thumbnail.py                Qt-free PNG-bytes thumbnail generation (Pillow) for the preview panel
     nested_parser.py           Nested-dict flattening helper
 tests/                         pytest; one test module roughly per source module
 docs/                          Screenshots

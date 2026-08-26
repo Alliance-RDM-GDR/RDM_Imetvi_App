@@ -34,6 +34,9 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).
+- 🖼️ **Collapsible thumbnail preview** — confirms visually which file is
+  loaded (JPG/PNG/TIFF, first page for multi-page TIFF); other formats
+  show a generic extension placeholder.
 - 🧾 **Three-tab metadata view**:
   - *Raw Metadata* — everything the parser extracted, unfiltered.
   - *Recommended Fields* — standardized, discipline-aligned fields with

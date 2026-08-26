@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
     QTabWidget
 )
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtGui import QPixmap
 
 # === Import parsers, standardizers, and profiles ===
 from metadata_parsers.tiff_parser import parse_tiff_metadata
@@ -41,6 +42,7 @@ from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS
 from utils.sidecar import write_sidecar, sidecar_path_for
 from utils.integrity import compute_md5, save_checksums, load_checksums, verify_checksums
+from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
@@ -305,6 +307,29 @@ class MetadataViewer(QWidget):
 
         layout.addLayout(button_layout)
 
+        # === Content row: collapsible thumbnail preview + tabbed metadata ===
+        content_layout = QHBoxLayout()
+
+        self.preview_panel = QWidget()
+        preview_layout = QVBoxLayout()
+        preview_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.thumbnail_display = QLabel("No Preview")
+        self.thumbnail_display.setAlignment(Qt.AlignCenter)
+        self.thumbnail_display.setFixedSize(160, 160)
+        self.thumbnail_display.setStyleSheet(
+            "border: 1px solid palette(mid); background: palette(base);"
+        )
+        preview_layout.addWidget(self.thumbnail_display)
+        preview_layout.addStretch()
+        self.preview_panel.setLayout(preview_layout)
+        content_layout.addWidget(self.preview_panel)
+
+        self.toggle_preview_btn = QPushButton("Hide Preview")
+        self.toggle_preview_btn.setCheckable(True)
+        self.toggle_preview_btn.clicked.connect(self.toggle_preview_panel)
+        button_layout.addWidget(self.toggle_preview_btn)
+
         # === Metadata display — tabbed view ===
         self.tab_widget = QTabWidget()
 
@@ -323,7 +348,8 @@ class MetadataViewer(QWidget):
         self.curation_display.setPlaceholderText("Curation flags and integrity info will appear here")
         self.tab_widget.addTab(self.curation_display, "Curation")
 
-        layout.addWidget(self.tab_widget)
+        content_layout.addWidget(self.tab_widget)
+        layout.addLayout(content_layout)
 
         self.setLayout(layout)
 
@@ -336,6 +362,25 @@ class MetadataViewer(QWidget):
         self.current_display_metadata = None
         self.folder_worker = None
         self.progress_dialog = None
+
+    # === Thumbnail Preview ===
+    def toggle_preview_panel(self, checked):
+        self.preview_panel.setVisible(not checked)
+        self.toggle_preview_btn.setText("Show Preview" if checked else "Hide Preview")
+
+    def update_thumbnail(self, file_path):
+        thumb_bytes = generate_thumbnail_bytes(file_path) if file_path else None
+
+        if thumb_bytes:
+            pixmap = QPixmap()
+            pixmap.loadFromData(thumb_bytes)
+            self.thumbnail_display.setPixmap(
+                pixmap.scaled(160, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
+        else:
+            self.thumbnail_display.setPixmap(QPixmap())
+            ext = os.path.splitext(file_path)[1].lstrip(".").upper() if file_path else ""
+            self.thumbnail_display.setText(ext if ext else "No Preview")
 
     # === Standards Documentation ===
     def show_standards_info(self):
@@ -504,6 +549,7 @@ class MetadataViewer(QWidget):
         ext = os.path.splitext(file_path)[1].lower()
         self.write_metadata_btn.setEnabled(ext in SUPPORTED_WRITE_EXTENSIONS)
         self.save_sidecar_btn.setEnabled(bool(file_path))
+        self.update_thumbnail(file_path)
 
         fname = os.path.basename(file_path)
 
@@ -603,7 +649,6 @@ class MetadataViewer(QWidget):
             )
 
         self.curation_display.setHtml(html)
-        self.curation_display.setOpenLinks(False)  # prevent accidental navigation
 
     # === Metadata Display ===
     def display_metadata(self, file_path, single_file=False):
@@ -618,6 +663,7 @@ class MetadataViewer(QWidget):
             self.current_display_metadata = None
             self.write_metadata_btn.setEnabled(False)
             self.save_sidecar_btn.setEnabled(False)
+            self.update_thumbnail(None)
             self.raw_metadata_display.clear()
             self.recommended_metadata_display.clear()
             self.raw_metadata_display.append(f"File: {os.path.basename(file_path)}\n")

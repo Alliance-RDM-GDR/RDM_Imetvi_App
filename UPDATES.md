@@ -7,6 +7,28 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Thumbnail preview panel (C3)
+
+- Added `utils/thumbnail.py`: `generate_thumbnail_bytes()` rasterizes JPG,
+  PNG, and TIFF (first page/frame for multi-page files) via Pillow and
+  returns PNG-encoded bytes, kept Qt-free so it's unit-testable without a
+  running `QApplication`. Returns `None` for non-rasterizable formats
+  (DICOM, FITS, HDF5, NetCDF, LIF, CZI) and for corrupt/missing files.
+- Added a collapsible preview panel to `main.py`: a fixed-size `QLabel`
+  left of the tab widget shows the thumbnail (scaled, aspect-preserved)
+  or, for formats Pillow can't rasterize, the file extension as a generic
+  placeholder. A **Hide Preview** / **Show Preview** toggle button
+  collapses the panel.
+- While testing this feature interactively (per project convention —
+  UI changes get exercised in the running app, not just unit tests),
+  found and fixed a pre-existing bug: the Curation tab called
+  `self.curation_display.setOpenLinks(False)`, but `setOpenLinks` belongs
+  to `QTextBrowser`, not `QTextEdit` — every file load crashed the
+  Curation tab render with `AttributeError`. Removed the call entirely
+  (`QTextEdit` doesn't auto-navigate HTML links without extra wiring
+  anyway, so nothing needed replacing it).
+- 9 new tests (`tests/test_thumbnail.py`).
+
 ## 2026-08-25 — NetCDF / CF Conventions support (B3)
 
 - Added `metadata_parsers/netcdf_parser.py` (via `netCDF4`),

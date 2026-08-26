@@ -105,7 +105,7 @@ Actualmente dos paneles lado a lado. Con tres categorías de información
 - La pestaña Curation muestra: flags, MD5, y advertencias de compresión
   resaltadas en color
 
-### C3. Vista previa de imagen (thumbnail) [ ]
+### C3. Vista previa de imagen (thumbnail) [x]
 Los usuarios necesitan confirmar visualmente que están viendo el archivo correcto.
 
 - Panel adicional (colapsable) con thumbnail via `Pillow` o `QPixmap`
