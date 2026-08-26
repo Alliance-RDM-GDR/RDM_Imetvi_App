@@ -717,8 +717,40 @@ class MetadataViewer(QWidget):
                         f"Compression: {obj.get('Compression','—')}"
                         f"{risk}"
                     )
+            elif key == "Variables" and isinstance(value, list):
+                # NetCDF/CF variable inventory. standard_name is the CF
+                # controlled-vocabulary term that makes a variable
+                # machine-interpretable across tools (FAIR: Interoperable) —
+                # flag variables that lack one so a curator can spot
+                # non-CF-compliant fields at a glance.
+                self.recommended_metadata_display.append(f"{display_key}:")
+                for v in value:
+                    name = v.get("Name", "")
+                    std_name = v.get("StandardName", "")
+                    units = v.get("Units", "")
+                    long_name = v.get("LongName", "")
+                    shape = v.get("Shape", "")
+
+                    line = f"  - {name}"
+                    if std_name:
+                        line += f"  [{std_name}]"
+                    else:
+                        line += '  <span style="color:#e67e22;">⚠ no standard_name (not CF-mapped)</span>'
+                    if units:
+                        line += f"  ({units})"
+                    if long_name:
+                        line += f"  — {long_name}"
+                    if shape:
+                        line += f"  shape: {shape}"
+                    self.recommended_metadata_display.append(line)
             else:
-                self.recommended_metadata_display.append(f"{display_key}:  {value}")
+                if isinstance(value, list) and all(isinstance(v, str) for v in value):
+                    # Plain string lists (e.g. CoordinateVariables, GeoTIFF's
+                    # BandDescriptions) — join instead of dumping a Python
+                    # list repr with quotes/brackets.
+                    self.recommended_metadata_display.append(f"{display_key}:  {', '.join(value)}")
+                else:
+                    self.recommended_metadata_display.append(f"{display_key}:  {value}")
 
         # ── Tab 3: Curation ───────────────────────────────────────────────────
         self.curation_display.clear()

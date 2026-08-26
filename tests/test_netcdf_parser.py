@@ -119,7 +119,15 @@ def test_standardize_netcdf_maps_iso19115_fields(tmp_path):
     assert result["Title"] == "Synthetic test dataset"
     assert result["ProcessingHistory"] == "Created by test suite"
     assert "lat" in result["CoordinateVariables"]
-    assert any("temperature" in v for v in result["Variables"])
+
+    # Variables stay structured (dicts), not flattened to display strings —
+    # downstream JSON/CSV exports and the Recommended Fields renderer both
+    # rely on this to keep the CF standard_name as a real, reusable field.
+    temp_var = next(v for v in result["Variables"] if v["Name"] == "temperature")
+    assert temp_var["StandardName"] == "air_temperature"
+    assert temp_var["Units"] == "K"
+    assert temp_var["LongName"] == "Air Temperature"
+    assert temp_var["Shape"] == [3, 4, 5]
 
 
 def test_standardize_netcdf_handles_missing_globals():

@@ -13,10 +13,19 @@ def standardize_netcdf_remote_sensing_metadata(raw_metadata):
     variables = raw_metadata.get("Variables", []) or []
     coord_vars = raw_metadata.get("CoordinateVariables", []) or []
 
-    var_summaries = [
-        f"{v['Name']}"
-        + (f" ({v['Units']})" if v.get("Units") else "")
-        + (f" [{v['StandardName']}]" if v.get("StandardName") else "")
+    # Kept as structured dicts (Name/Units/StandardName/Shape), not flattened
+    # to display strings — the CF standard_name is the controlled-vocabulary
+    # term a curator or downstream tool needs intact for FAIR interoperability/
+    # reuse (JSON and CSV exports both benefit from real fields here instead
+    # of a pre-formatted sentence baked at standardization time).
+    variable_entries = [
+        {
+            "Name": v.get("Name", ""),
+            "StandardName": v.get("StandardName", ""),
+            "Units": v.get("Units", ""),
+            "LongName": v.get("LongName", ""),
+            "Shape": v.get("Shape", []),
+        }
         for v in variables
     ]
 
@@ -30,7 +39,7 @@ def standardize_netcdf_remote_sensing_metadata(raw_metadata):
         "DimensionCount": str(raw_metadata.get("DimensionCount", "")),
         "VariableCount": str(raw_metadata.get("VariableCount", "")),
         "CoordinateVariables": coord_vars,
-        "Variables": var_summaries,
+        "Variables": variable_entries,
     }
 
     return dict_report

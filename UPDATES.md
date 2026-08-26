@@ -7,6 +7,41 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-26 — Readable NetCDF variable list + CF-compliance flagging
+
+The user tested a real NetCDF (`.adcp.nc`, ADCP ocean current data, 32
+variables) and found the Recommended Fields tab's `Variables` line
+unreadable — a single wrapped paragraph dumping a Python list repr of
+pre-formatted strings like `'LRZAAP01 (m s-1) [upward_sea_water_velocity]'`.
+Asked to review it against FAIR/data-documentation practice.
+
+- `standardizers/netcdf_remote_sensing_standardizer.py`: stopped
+  flattening `Variables` into display strings at standardization time —
+  now kept as a list of dicts (`Name`, `StandardName`, `Units`,
+  `LongName`, `Shape`), matching the pattern `Channels`/`Datasets` already
+  use elsewhere. This isn't just a display fix: the flattened strings were
+  also lossy for JSON/CSV export (FAIR "Reusable" — metadata should stay
+  structured, not baked into a sentence).
+- `main.py::render_metadata()`: added a `Variables` rendering branch — one
+  line per variable (`- Name [standard_name] (units) — long_name  shape:
+  [...]`), and flags any variable **missing a CF `standard_name`** with an
+  orange `⚠ no standard_name (not CF-mapped)` marker. `standard_name` is
+  CF's controlled-vocabulary term (FAIR "Interoperable" — I2: metadata use
+  vocabularies that follow FAIR principles); a curator can now spot
+  non-CF-compliant variables at a glance instead of having to know the CF
+  standard name table by heart.
+- Also added a generic fallback for any plain list-of-strings field
+  (`CoordinateVariables`, GeoTIFF's `BandDescriptions`, etc.): joined with
+  `, ` instead of printed as a Python list repr with quotes and brackets.
+- Updated `tests/test_netcdf_parser.py`'s standardizer test for the new
+  structured shape (was asserting a substring match on a flattened
+  string; now asserts the dict fields directly).
+- Verified interactively against the user's actual file: all 32 ADCP
+  variables now print one per line, correctly scannable, with 9 of them
+  (`time`, `distance`, `VEL_MAGNETIC_EAST/NORTH`, `TEMPPR01`, `filename`,
+  `instrument_serial_number`, `instrument_model`, `geographic_area`)
+  correctly flagged as lacking a CF `standard_name`.
+
 ## 2026-08-26 — Fix three issues found reviewing an OME-TIFF batch
 
 Found while the user tested a 10-file OME-TIFF batch (Huygens-processed

@@ -245,6 +245,31 @@ adds them as a `MissingFields` column. HDF5 has no registry entry — its
 standardized output is a dataset inventory, not a fixed scalar field set,
 so "missing field" doesn't apply the same way.
 
+## Structured list fields in Recommended Fields
+
+Some standardized fields are lists rather than scalars — TIFF/CZI
+`Channels`, HDF5 `Datasets`, NetCDF `Variables`. `render_metadata()` in
+`main.py` special-cases each by key name to render one line per entry
+instead of dumping a Python list/dict repr, and a generic fallback joins
+any plain list-of-strings (`CoordinateVariables`, GeoTIFF
+`BandDescriptions`) without repr-style quotes/brackets.
+
+Standardizers must keep these as lists of dicts with real fields, never
+pre-flatten them into formatted display strings — flattening loses
+structure that both the renderer and the JSON/CSV exporters need
+(`export_as_csv()` flattens nested list-of-dict fields generically as
+`Key.0.Subkey`, which only produces useful columns if the dict fields are
+still real key/value pairs, not a baked sentence). This came up concretely
+with `netcdf_remote_sensing_standardizer.py`'s `Variables` field, which
+originally flattened each variable to a string like
+`"LRZAAP01 (m s-1) [upward_sea_water_velocity]"` — readable in isolation
+but unreadable as a 32-entry wrapped paragraph, and lossy for exports.
+The NetCDF `Variables` renderer additionally flags any variable missing a
+CF `standard_name` (`⚠ no standard_name (not CF-mapped)`, in orange) —
+`standard_name` is CF's controlled vocabulary term, so its absence is a
+concrete FAIR-interoperability gap a curator can act on, not just a
+missing label.
+
 ## Write-back safety (`utils/metadata_writer.py::is_write_supported()`)
 
 `_write_tiff_metadata()` rewrites a `.tif`/`.tiff` file from its pixel
