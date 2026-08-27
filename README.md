@@ -75,6 +75,11 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 - 🔒 **Cross-session integrity verification** — `Save Checksums` persists
   a `checksums.json` manifest per folder; `Verify Integrity` re-scans and
   reports `OK` / `MODIFIED` / `MISSING` / `NEW` per file.
+- 📋 **Batch Compliance Summary** — aggregates missing-required-field and
+  curation-flag counts across a whole loaded batch into one dataset-wide
+  readiness snapshot ("N / M files fully compliant", ranked by which
+  fields/flags are most common), so you can judge deposit-readiness
+  without reading every file's Curation tab individually.
 - 💾 **Export**:
   - Standardized metadata as JSON or CSV (single file or full batch)
   - Dedicated **Curation Report** CSV (one row per file, curation-focused

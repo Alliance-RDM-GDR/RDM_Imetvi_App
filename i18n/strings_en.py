@@ -22,6 +22,8 @@ STRINGS_EN = {
     "btn_export_json": "Export as JSON",
     "btn_export_csv": "Export as CSV",
     "btn_export_curation": "Export Curation Report",
+    "btn_batch_compliance": "Batch Compliance Summary",
+    "tooltip_batch_compliance": "Aggregates missing-field and curation-flag counts across all loaded files — how ready is this dataset overall?",
 
     # --- Sidebar: Write-back ---
     "group_write": "Write-back",
@@ -118,6 +120,14 @@ STRINGS_EN = {
     "dialog_save_csv": "Save CSV",
     "msg_csv_success": "CSV file saved successfully.",
     "msg_csv_failed": "Failed to save CSV: {error}",
+
+    # --- Batch compliance summary dialog ---
+    "dialog_title_batch_compliance": "Batch Compliance Summary",
+    "compliance_summary_header": "{compliant} / {total} files fully compliant (no missing required fields, no curation flags)",
+    "compliance_missing_fields_header": "Missing required fields, by frequency:",
+    "compliance_curation_flags_header": "Curation flags, by frequency:",
+    "compliance_files_count": "{count} file(s)",
+    "compliance_all_clear": "All files are fully compliant — no missing required fields or curation flags.",
 
     # --- Generic dialog titles ---
     "msg_success_title": "Success",

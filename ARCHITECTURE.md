@@ -322,6 +322,23 @@ uncorrected pixel size was off by a factor of 1e6 (`4.66e-06` shown where
 `4.66` µm/pixel was correct, consistent with the camera's known ~4.65 µm
 native pixel pitch).
 
+## Batch compliance summary (`utils/compliance_summary.py`)
+
+Aggregates the per-file `_MissingFields` (D1) and `_CurationFlags`
+(curation flags) already computed for every loaded file into a single
+dataset-wide readiness snapshot — "N / M files fully compliant," plus a
+frequency-ranked breakdown of which specific fields are most often
+missing and which curation flags are most common. This answers "is this
+dataset ready to deposit?" without reading every file's Curation tab
+individually or scanning every row of the per-file curation report CSV.
+
+`compute_batch_compliance_summary(sources)` is pure aggregation over data
+that's already attached to each file — no new extraction or parsing.
+`main.py::show_batch_compliance_summary()` reuses the existing
+`_current_batch_sources()` helper (loaded batch, or the single displayed
+file as a degenerate one-file case) and the plain-dialog-with-QTextEdit
+pattern already used by `verify_integrity()`.
+
 ## Structured list fields in Recommended Fields
 
 Some standardized fields are lists rather than scalars — TIFF/CZI

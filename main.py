@@ -45,6 +45,7 @@ from utils.sidecar import write_sidecar, sidecar_path_for
 from utils.integrity import compute_md5, save_checksums, load_checksums, verify_checksums
 from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
+from utils.compliance_summary import compute_batch_compliance_summary
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
 from metadata_profiles.required_fields_registry import compute_missing_fields
@@ -324,6 +325,11 @@ class MetadataViewer(QWidget):
         self.export_curation_btn.setEnabled(False)
         export_group_layout.addWidget(self.export_curation_btn)
 
+        self.batch_compliance_btn = QPushButton()
+        self.batch_compliance_btn.clicked.connect(self.show_batch_compliance_summary)
+        self.batch_compliance_btn.setEnabled(False)
+        export_group_layout.addWidget(self.batch_compliance_btn)
+
         self.export_group.setLayout(export_group_layout)
         sidebar_layout.addWidget(self.export_group)
 
@@ -457,6 +463,8 @@ class MetadataViewer(QWidget):
         self.export_json_btn.setText(tr("btn_export_json"))
         self.export_csv_btn.setText(tr("btn_export_csv"))
         self.export_curation_btn.setText(tr("btn_export_curation"))
+        self.batch_compliance_btn.setText(tr("btn_batch_compliance"))
+        self.batch_compliance_btn.setToolTip(tr("tooltip_batch_compliance"))
 
         self.write_group.setTitle(tr("group_write"))
         self.write_metadata_btn.setText(tr("btn_write_metadata"))
@@ -660,6 +668,7 @@ class MetadataViewer(QWidget):
         self.export_json_btn.setEnabled(bool(self.loaded_files))
         self.export_csv_btn.setEnabled(bool(self.loaded_files))
         self.export_curation_btn.setEnabled(bool(self.loaded_files))
+        self.batch_compliance_btn.setEnabled(bool(self.loaded_files))
         self.save_checksums_btn.setEnabled(bool(self.loaded_files))
         self.verify_integrity_btn.setEnabled(bool(self.loaded_files))
 
@@ -865,6 +874,7 @@ class MetadataViewer(QWidget):
         self.export_json_btn.setEnabled(bool(self.all_standardized_metadata))
         self.export_csv_btn.setEnabled(bool(self.all_standardized_metadata))
         self.export_curation_btn.setEnabled(bool(self.all_standardized_metadata))
+        self.batch_compliance_btn.setEnabled(bool(self.all_standardized_metadata))
         self.save_checksums_btn.setEnabled(bool(self.all_standardized_metadata))
         self.verify_integrity_btn.setEnabled(bool(self.all_standardized_metadata))
 
@@ -1115,6 +1125,67 @@ class MetadataViewer(QWidget):
 
         dialog = QDialog(self)
         dialog.setWindowTitle(tr("dialog_title_integrity_result"))
+        dialog.setMinimumSize(480, 360)
+        dialog_layout = QVBoxLayout()
+
+        result_display = QTextEdit()
+        result_display.setReadOnly(True)
+        result_display.setPlainText("\n".join(lines))
+        dialog_layout.addWidget(result_display)
+
+        close_btn = QPushButton(tr("btn_close"))
+        close_btn.clicked.connect(dialog.accept)
+        dialog_layout.addWidget(close_btn)
+
+        dialog.setLayout(dialog_layout)
+        dialog.exec_()
+
+    def show_batch_compliance_summary(self):
+        """
+        Aggregates _MissingFields / _CurationFlags across the loaded batch
+        into a single readiness snapshot — how many files are fully
+        compliant, and which specific fields/flags are the most common
+        gaps — so a curator can judge dataset-wide readiness (e.g. before
+        depositing) without reading every file's Curation tab individually.
+        """
+        sources = self._current_batch_sources()
+        if not sources:
+            return
+
+        summary = compute_batch_compliance_summary(sources)
+        active_profile = get_profile(self.app_dropdown.currentText())
+
+        lines = [
+            tr(
+                "compliance_summary_header",
+                compliant=summary["fully_compliant"],
+                total=summary["total_files"],
+            ),
+            "",
+        ]
+
+        if summary["missing_field_counts"]:
+            lines.append(tr("compliance_missing_fields_header"))
+            for field, count in sorted(
+                summary["missing_field_counts"].items(), key=lambda kv: -kv[1]
+            ):
+                label = format_label(field, active_profile)
+                lines.append(f"  - {label}: {tr('compliance_files_count', count=count)}")
+            lines.append("")
+
+        if summary["curation_flag_counts"]:
+            lines.append(tr("compliance_curation_flags_header"))
+            for flag, count in sorted(
+                summary["curation_flag_counts"].items(), key=lambda kv: -kv[1]
+            ):
+                lines.append(f"  - {flag}: {tr('compliance_files_count', count=count)}")
+            lines.append("")
+
+        if not summary["missing_field_counts"] and not summary["curation_flag_counts"]:
+            lines.append(tr("compliance_all_clear"))
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr("dialog_title_batch_compliance"))
         dialog.setMinimumSize(480, 360)
         dialog_layout = QVBoxLayout()
 

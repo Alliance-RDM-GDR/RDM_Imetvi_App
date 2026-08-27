@@ -22,6 +22,8 @@ STRINGS_FR = {
     "btn_export_json": "Exporter en JSON",
     "btn_export_csv": "Exporter en CSV",
     "btn_export_curation": "Exporter le rapport de curation",
+    "btn_batch_compliance": "Résumé de conformité du lot",
+    "tooltip_batch_compliance": "Agrège le nombre de champs manquants et d'indicateurs de curation pour tous les fichiers chargés — ce jeu de données est-il prêt dans l'ensemble ?",
 
     # --- Sidebar: Write-back ---
     "group_write": "Écriture",
@@ -119,6 +121,14 @@ STRINGS_FR = {
     "dialog_save_csv": "Enregistrer en CSV",
     "msg_csv_success": "Fichier CSV enregistré avec succès.",
     "msg_csv_failed": "Échec de l'enregistrement du fichier CSV : {error}",
+
+    # --- Batch compliance summary dialog ---
+    "dialog_title_batch_compliance": "Résumé de conformité du lot",
+    "compliance_summary_header": "{compliant} / {total} fichiers entièrement conformes (aucun champ requis manquant, aucun indicateur de curation)",
+    "compliance_missing_fields_header": "Champs requis manquants, par fréquence :",
+    "compliance_curation_flags_header": "Indicateurs de curation, par fréquence :",
+    "compliance_files_count": "{count} fichier(s)",
+    "compliance_all_clear": "Tous les fichiers sont entièrement conformes — aucun champ requis manquant ni indicateur de curation.",
 
     # --- Generic dialog titles ---
     "msg_success_title": "Succès",

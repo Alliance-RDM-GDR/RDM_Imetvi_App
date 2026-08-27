@@ -7,6 +7,36 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-08-27 — Batch Compliance Summary
+
+Asked for a recommendation on what would most complement the app's
+existing curation work, given two options: (1) let researchers supply
+the fields no standard extracts automatically (Biosample/Specimen,
+lineage, etc.), or (2) a dataset-wide compliance summary reusing data the
+app already computes per file. The user picked the second — smaller
+scope, no new extraction, just aggregation.
+
+- Added `utils/compliance_summary.py`: `compute_batch_compliance_summary()`
+  aggregates each loaded file's `_MissingFields` and `_CurationFlags`
+  into `{total_files, fully_compliant, missing_field_counts,
+  curation_flag_counts, ...}` — pure aggregation, no new parsing.
+- Added a **Batch Compliance Summary** button (Export group in the
+  sidebar) opening a dialog: "N / M files fully compliant," then missing
+  required fields and curation flags each ranked by how many files they
+  affect (human-readable field labels via `format_label()`). Reuses the
+  existing `_current_batch_sources()` helper and the same
+  dialog-with-QTextEdit pattern as `verify_integrity()`.
+- Bilingual: added `btn_batch_compliance`, `tooltip_batch_compliance`, and
+  five `compliance_*` keys to both `i18n/strings_en.py` and
+  `strings_fr.py`.
+- 6 new tests (`tests/test_compliance_summary.py`).
+- Verified against a real 38-file OME-TIFF batch (the same STED dataset
+  from the earlier OME-TIFF review): correctly reported "1 / 38 files
+  fully compliant" with "DIMENSION_OUTLIER: 37 file(s)" — matching the
+  per-cell-crop dimension variation already identified in that dataset,
+  confirming the aggregation lines up with what was already known about
+  the batch.
+
 ## 2026-08-26 — Widen thumbnail preview to fill the sidebar column
 
 The preview box stayed at its old 160×160 size after the sidebar widened
