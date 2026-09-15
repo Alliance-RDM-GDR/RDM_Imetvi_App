@@ -7,8 +7,7 @@ working with microscopy, remote sensing, medical, astronomical, and
 general-purpose image files in Canadian academic institutions.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the codebase is
-organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
-[`UPDATES.md`](UPDATES.md) for a chronological changelog.
+organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
 
 ## Features
 

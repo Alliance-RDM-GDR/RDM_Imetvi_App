@@ -2,8 +2,7 @@
 
 This document describes how the codebase is organized and how a file moves
 from disk to the screen (and back, when metadata is written or exported).
-It complements [`README.md`](README.md) (what the app does) and
-[`ROADMAP.md`](ROADMAP.md) (what's planned/in progress). See
+It complements [`README.md`](README.md) (what the app does). See
 [`UPDATES.md`](UPDATES.md) for a chronological changelog.
 
 ---
@@ -237,7 +236,6 @@ tests/                         pytest; one test module roughly per source module
 docs/                          Screenshots
 output/                        Runtime export output (gitignored content)
 templates/                     Reserved for D1 (metadata templates) — currently empty
-ROADMAP.md                     Task-tracked development plan
 UPDATES.md                     Chronological changelog (human-readable)
 ```
 

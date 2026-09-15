@@ -1,8 +1,7 @@
 # IMetVi — Updates
 
 Human-readable changelog. Entries are grouped by development session and
-listed newest first. For the underlying task tracking, see
-[`ROADMAP.md`](ROADMAP.md); for how these pieces fit together, see
+listed newest first. For how the pieces fit together, see
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
@@ -655,8 +654,8 @@ TIFF (button correctly re-enabled).
 ## How to add an entry
 
 When a development session lands a feature (or the user confirms a task
-as complete against `ROADMAP.md`), add a new dated section at the top of
-this file — newest first — summarizing:
+as complete), add a new dated section at the top of this file — newest
+first — summarizing:
 
 - What was added/changed, in plain language (not a diff).
 - Why, if the motivation isn't obvious from the description.

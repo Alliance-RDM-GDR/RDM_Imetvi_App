@@ -8,6 +8,7 @@ output/*
 # Local-only project files — never tracked/published
 CLAUDE.md
 .claude/
+ROADMAP.md
 
 # Raw survey export — contains respondent PII (names, emails); kept locally
 # for project reference only, never committed.
