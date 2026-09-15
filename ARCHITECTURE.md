@@ -238,7 +238,6 @@ output/                        Runtime export output (gitignored content)
 templates/                     Reserved for D1 (metadata templates) — currently empty
 ROADMAP.md                     Task-tracked development plan
 UPDATES.md                     Chronological changelog (human-readable)
-
 ```
 
 ---

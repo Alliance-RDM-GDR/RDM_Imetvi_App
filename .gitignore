@@ -4,3 +4,18 @@ __pycache__/
 .pytest_tmp/
 output/*
 !output/.gitkeep
+
+# Local-only project files — never tracked/published
+CLAUDE.md
+.claude/
+
+# Raw survey export — contains respondent PII (names, emails); kept locally
+# for project reference only, never committed.
+Imetvi_GoogleForm.csv
+
+# Older experimental script, superseded by the parser/standardizer
+# architecture; kept locally for reference only.
+dev.py
+
+# Local sample images used for manual testing.
+examples/
