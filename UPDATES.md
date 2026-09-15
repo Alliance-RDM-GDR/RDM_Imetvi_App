@@ -7,6 +7,26 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-09-15 — Sidebar readability: contextual LiDAR section, tooltips, readable WKT
+
+Three small UI readability fixes, prompted by using the app with a real
+LAS file:
+
+- The **LiDAR** sidebar section (Analyze Point Classification) used to
+  always be visible with its button greyed out for non-LAS files. It now
+  only appears at all when the loaded file's format is LAS, instead of
+  sitting in the general sidebar disabled.
+- Every sidebar button now has a tooltip describing what it does on
+  hover (Load File/Folder, the three Export buttons, Write Metadata,
+  Toggle Preview — the rest already had one).
+- A CRS's WKT definition is commonly 1000+ characters on a single line
+  (nested datum/ellipsoid/projection parameters), which was unreadable
+  in the Recommended Fields tab. It's now shown indented by nesting
+  depth (`utils/wkt_display.py`, via `pyproj`'s built-in pretty-printer)
+  for display only — the value written to JSON/CSV/sidecar exports and
+  used for write-back stays the original single line, so nothing that
+  reads that field elsewhere is affected.
+
 ## 2026-09-15 — Add on-demand LAS point classification analysis
 
 Asked whether the "point classification scheme / flight parameters not

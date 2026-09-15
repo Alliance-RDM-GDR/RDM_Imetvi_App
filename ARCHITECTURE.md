@@ -231,6 +231,7 @@ utils/
     sidecar.py                 Writes/reads a standardized-metadata .json beside the source image
     integrity.py                MD5 + checksums.json persistence and cross-session verification
     thumbnail.py                Qt-free PNG-bytes thumbnail generation (Pillow) for the preview panel
+    wkt_display.py              Indents a CRS WKT string for on-screen display only (via pyproj)
     nested_parser.py           Nested-dict flattening helper
 tests/                         pytest; one test module roughly per source module
 docs/                          Screenshots

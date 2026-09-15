@@ -45,7 +45,9 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   GPS time range, and flight-line count. Kept separate from the normal
   load path since it's slower (reads every point); sensor model and
   flying height are not stored in LAS/LAZ files at all, so the app says
-  so rather than guessing.
+  so rather than guessing. The sidebar section only appears when the
+  loaded file's format is LAS — it stays out of the way for every other
+  format instead of sitting there greyed out.
 
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).
@@ -54,6 +56,13 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   English and French, including the dynamically rendered Curation
   summary. (Extracted metadata field labels and standards documentation
   text are not yet translated — see [`ARCHITECTURE.md`](ARCHITECTURE.md).)
+- 💬 **Tooltips on every sidebar action** — hover any button to see what
+  it does before clicking it.
+- 🌳 **Readable CRS WKT** — a CRS's WKT definition (often 1000+ characters
+  on one line) is shown indented by nesting depth in the Recommended
+  Fields tab instead of one unbroken wall of text. The value exported to
+  JSON/CSV/sidecar files is unaffected — this only changes the on-screen
+  display.
 - 🖼️ **Collapsible thumbnail preview** — confirms visually which file is
   loaded (JPG/PNG/TIFF, first page for multi-page TIFF); other formats
   show a generic extension placeholder.
@@ -99,7 +108,9 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
 ## Screenshot
 
 > ![IMetVi GUI](docs/AppImage.png)
-> *Example showing TIFF metadata extraction with four channels*
+> *Recommended Fields view for a loaded LAS file — note the CRS (WKT) field
+> indented for readability, and the LiDAR sidebar section that only appears
+> for this format*
 
 ---
 

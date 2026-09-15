@@ -15,19 +15,25 @@ STRINGS_FR = {
     # --- Sidebar: File ---
     "group_file": "Fichier",
     "btn_load_file": "Charger un fichier",
+    "tooltip_load_file": "Ouvre un seul fichier image et affiche ses métadonnées.",
     "btn_load_folder": "Charger un dossier",
+    "tooltip_load_folder": "Charge tous les fichiers pris en charge d'un dossier pour un traitement par lot.",
 
     # --- Sidebar: Export ---
     "group_export": "Exporter",
     "btn_export_json": "Exporter en JSON",
+    "tooltip_export_json": "Exporte les métadonnées du fichier affiché sous forme de fichier .json.",
     "btn_export_csv": "Exporter en CSV",
+    "tooltip_export_csv": "Exporte les métadonnées du fichier affiché sous forme de fichier .csv.",
     "btn_export_curation": "Exporter le rapport de curation",
+    "tooltip_export_curation": "Exporte un tableau résumé (une ligne par fichier chargé) des indicateurs de curation, sommes de contrôle et normes de référence.",
     "btn_batch_compliance": "Résumé de conformité du lot",
     "tooltip_batch_compliance": "Agrège le nombre de champs manquants et d'indicateurs de curation pour tous les fichiers chargés — ce jeu de données est-il prêt dans l'ensemble ?",
 
     # --- Sidebar: Write-back ---
     "group_write": "Écriture",
     "btn_write_metadata": "Écrire les métadonnées dans le fichier",
+    "tooltip_write_metadata": "Écrit les métadonnées normalisées directement dans les champs de métadonnées du fichier. Écrase le fichier.",
     "btn_save_sidecar": "Enregistrer le fichier JSON associé",
     "tooltip_save_sidecar": "Enregistre les métadonnées dans un fichier .json à côté de l'image (même dossier, même nom de base).",
 
@@ -42,6 +48,7 @@ STRINGS_FR = {
     "group_view": "Affichage",
     "btn_hide_preview": "Masquer l'aperçu",
     "btn_show_preview": "Afficher l'aperçu",
+    "tooltip_toggle_preview": "Affiche ou masque le panneau d'aperçu miniature.",
     "label_no_preview": "Aucun aperçu",
 
     # --- Tabs ---

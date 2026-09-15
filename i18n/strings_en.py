@@ -15,19 +15,25 @@ STRINGS_EN = {
     # --- Sidebar: File ---
     "group_file": "File",
     "btn_load_file": "Load File",
+    "tooltip_load_file": "Open a single image file and display its metadata.",
     "btn_load_folder": "Load Folder",
+    "tooltip_load_folder": "Load every supported file in a folder for batch processing.",
 
     # --- Sidebar: Export ---
     "group_export": "Export",
     "btn_export_json": "Export as JSON",
+    "tooltip_export_json": "Export the currently displayed file's metadata as a .json file.",
     "btn_export_csv": "Export as CSV",
+    "tooltip_export_csv": "Export the currently displayed file's metadata as a .csv file.",
     "btn_export_curation": "Export Curation Report",
+    "tooltip_export_curation": "Export a summary table (one row per loaded file) of curation flags, checksums, and reference standards.",
     "btn_batch_compliance": "Batch Compliance Summary",
     "tooltip_batch_compliance": "Aggregates missing-field and curation-flag counts across all loaded files — how ready is this dataset overall?",
 
     # --- Sidebar: Write-back ---
     "group_write": "Write-back",
     "btn_write_metadata": "Write Metadata to File",
+    "tooltip_write_metadata": "Write the standardized metadata back into the file's own metadata fields. Overwrites the file.",
     "btn_save_sidecar": "Save Sidecar JSON",
     "tooltip_save_sidecar": "Save metadata as a .json file beside the image (same folder, same base name).",
 
@@ -42,6 +48,7 @@ STRINGS_EN = {
     "group_view": "View",
     "btn_hide_preview": "Hide Preview",
     "btn_show_preview": "Show Preview",
+    "tooltip_toggle_preview": "Show or hide the thumbnail preview panel.",
     "label_no_preview": "No Preview",
 
     # --- Tabs ---

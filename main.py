@@ -48,6 +48,7 @@ from utils.integrity import compute_md5, save_checksums, load_checksums, verify_
 from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
 from utils.compliance_summary import compute_batch_compliance_summary
+from utils.wkt_display import pretty_wkt
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
 from metadata_profiles.required_fields_registry import compute_missing_fields
@@ -382,6 +383,7 @@ class MetadataViewer(QWidget):
         lidar_group_layout.addWidget(self.analyze_las_btn)
 
         self.lidar_group.setLayout(lidar_group_layout)
+        self.lidar_group.setVisible(False)
         sidebar_layout.addWidget(self.lidar_group)
 
         self.view_group = QGroupBox()
@@ -476,12 +478,17 @@ class MetadataViewer(QWidget):
 
         self.file_group.setTitle(tr("group_file"))
         self.load_file_btn.setText(tr("btn_load_file"))
+        self.load_file_btn.setToolTip(tr("tooltip_load_file"))
         self.load_folder_btn.setText(tr("btn_load_folder"))
+        self.load_folder_btn.setToolTip(tr("tooltip_load_folder"))
 
         self.export_group.setTitle(tr("group_export"))
         self.export_json_btn.setText(tr("btn_export_json"))
+        self.export_json_btn.setToolTip(tr("tooltip_export_json"))
         self.export_csv_btn.setText(tr("btn_export_csv"))
+        self.export_csv_btn.setToolTip(tr("tooltip_export_csv"))
         self.export_curation_btn.setText(tr("btn_export_curation"))
+        self.export_curation_btn.setToolTip(tr("tooltip_export_curation"))
         self.batch_compliance_btn.setText(tr("btn_batch_compliance"))
         self.batch_compliance_btn.setToolTip(tr("tooltip_batch_compliance"))
 
@@ -504,6 +511,7 @@ class MetadataViewer(QWidget):
         self.toggle_preview_btn.setText(
             tr("btn_show_preview") if self.toggle_preview_btn.isChecked() else tr("btn_hide_preview")
         )
+        self.toggle_preview_btn.setToolTip(tr("tooltip_toggle_preview"))
 
         self.tab_widget.setTabText(0, tr("tab_raw_metadata"))
         self.tab_widget.setTabText(1, tr("tab_recommended_fields"))
@@ -722,9 +730,13 @@ class MetadataViewer(QWidget):
         self.current_display_text_report = text_report
         write_supported = is_write_supported(file_path, self.format_dropdown.currentText())
         self.write_metadata_btn.setEnabled(write_supported)
-        self.write_metadata_btn.setToolTip("" if write_supported else tr("tooltip_write_metadata_unsafe"))
+        self.write_metadata_btn.setToolTip(
+            tr("tooltip_write_metadata") if write_supported else tr("tooltip_write_metadata_unsafe")
+        )
         self.save_sidecar_btn.setEnabled(bool(file_path))
-        self.analyze_las_btn.setEnabled(self.format_dropdown.currentText() == "LAS")
+        is_las = self.format_dropdown.currentText() == "LAS"
+        self.lidar_group.setVisible(is_las)
+        self.analyze_las_btn.setEnabled(is_las)
         self.update_thumbnail(file_path)
 
         fname = os.path.basename(file_path)
@@ -810,6 +822,15 @@ class MetadataViewer(QWidget):
                     self.recommended_metadata_display.append(line)
                     if not std_name:
                         self._reset_text_format(self.recommended_metadata_display)
+            elif key == "CRS_WKT" and value:
+                # Raw WKT is a single unbroken line — often 1000+ characters
+                # of nested definitions (datum, ellipsoid, projection params,
+                # ...) that's unreadable wrapped mid-word at the panel width.
+                # Indent it by nesting depth for display only; the value
+                # exported to JSON/CSV/sidecar stays the original single line.
+                self.recommended_metadata_display.append(f"{display_key}:")
+                for wkt_line in pretty_wkt(value).splitlines():
+                    self.recommended_metadata_display.append(f"  {wkt_line}")
             else:
                 if isinstance(value, list) and all(isinstance(v, str) for v in value):
                     # Plain string lists (e.g. CoordinateVariables, GeoTIFF's
@@ -886,6 +907,7 @@ class MetadataViewer(QWidget):
             self.write_metadata_btn.setEnabled(False)
             self.write_metadata_btn.setToolTip("")
             self.save_sidecar_btn.setEnabled(False)
+            self.lidar_group.setVisible(False)
             self.analyze_las_btn.setEnabled(False)
             self.update_thumbnail(None)
             self.raw_metadata_display.clear()
