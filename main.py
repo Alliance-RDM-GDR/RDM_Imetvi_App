@@ -27,7 +27,7 @@ from metadata_parsers.hdf5_parser import parse_hdf5_metadata
 from metadata_parsers.png_parser import parse_png_metadata
 from metadata_parsers.lif_parser import parse_lif_metadata
 from metadata_parsers.netcdf_parser import parse_netcdf_metadata
-from metadata_parsers.las_parser import parse_las_metadata
+from metadata_parsers.las_parser import parse_las_metadata, analyze_las_point_data
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -373,6 +373,17 @@ class MetadataViewer(QWidget):
         self.integrity_group.setLayout(integrity_group_layout)
         sidebar_layout.addWidget(self.integrity_group)
 
+        self.lidar_group = QGroupBox()
+        lidar_group_layout = QVBoxLayout()
+
+        self.analyze_las_btn = QPushButton()
+        self.analyze_las_btn.clicked.connect(self.analyze_las_points)
+        self.analyze_las_btn.setEnabled(False)
+        lidar_group_layout.addWidget(self.analyze_las_btn)
+
+        self.lidar_group.setLayout(lidar_group_layout)
+        sidebar_layout.addWidget(self.lidar_group)
+
         self.view_group = QGroupBox()
         view_group_layout = QVBoxLayout()
 
@@ -484,6 +495,10 @@ class MetadataViewer(QWidget):
         self.save_checksums_btn.setToolTip(tr("tooltip_save_checksums"))
         self.verify_integrity_btn.setText(tr("btn_verify_integrity"))
         self.verify_integrity_btn.setToolTip(tr("tooltip_verify_integrity"))
+
+        self.lidar_group.setTitle(tr("group_lidar"))
+        self.analyze_las_btn.setText(tr("btn_analyze_las"))
+        self.analyze_las_btn.setToolTip(tr("tooltip_analyze_las"))
 
         self.view_group.setTitle(tr("group_view"))
         self.toggle_preview_btn.setText(
@@ -709,6 +724,7 @@ class MetadataViewer(QWidget):
         self.write_metadata_btn.setEnabled(write_supported)
         self.write_metadata_btn.setToolTip("" if write_supported else tr("tooltip_write_metadata_unsafe"))
         self.save_sidecar_btn.setEnabled(bool(file_path))
+        self.analyze_las_btn.setEnabled(self.format_dropdown.currentText() == "LAS")
         self.update_thumbnail(file_path)
 
         fname = os.path.basename(file_path)
@@ -870,6 +886,7 @@ class MetadataViewer(QWidget):
             self.write_metadata_btn.setEnabled(False)
             self.write_metadata_btn.setToolTip("")
             self.save_sidecar_btn.setEnabled(False)
+            self.analyze_las_btn.setEnabled(False)
             self.update_thumbnail(None)
             self.raw_metadata_display.clear()
             self.recommended_metadata_display.clear()
@@ -1196,6 +1213,85 @@ class MetadataViewer(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle(tr("dialog_title_batch_compliance"))
         dialog.setMinimumSize(480, 360)
+        dialog_layout = QVBoxLayout()
+
+        result_display = QTextEdit()
+        result_display.setReadOnly(True)
+        result_display.setPlainText("\n".join(lines))
+        dialog_layout.addWidget(result_display)
+
+        close_btn = QPushButton(tr("btn_close"))
+        close_btn.clicked.connect(dialog.accept)
+        dialog_layout.addWidget(close_btn)
+
+        dialog.setLayout(dialog_layout)
+        dialog.exec_()
+
+    # === LiDAR point-data analysis ===
+    def analyze_las_points(self):
+        """
+        Reads the currently displayed LAS/LAZ file's full point records
+        (not just the header) to report what only a point-level scan can
+        answer: the point classification breakdown, scan angle range, GPS
+        time range (when the point format stores it), and flight-line
+        count. Deliberately on-demand — see analyze_las_point_data()'s
+        docstring for why this isn't part of the normal load path.
+        """
+        if not self.current_display_file_path:
+            return
+
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            result = analyze_las_point_data(self.current_display_file_path)
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        fname = os.path.basename(self.current_display_file_path)
+
+        if "Error" in result:
+            QMessageBox.critical(self, tr("msg_error_title"), result["Error"])
+            return
+
+        lines = [tr("las_analysis_header", filename=fname), ""]
+
+        classification_counts = result.get("ClassificationCounts") or {}
+        total_points = sum(classification_counts.values())
+        if classification_counts:
+            lines.append(tr("las_classification_header"))
+            for name, count in sorted(classification_counts.items(), key=lambda kv: -kv[1]):
+                pct = (count / total_points * 100) if total_points else 0
+                lines.append(f"  - {name}: {count:,} ({pct:.1f}%)")
+            lines.append("")
+
+        if result.get("ScanAngleMin") is not None:
+            lines.append(
+                tr(
+                    "las_scan_angle_range",
+                    min=result["ScanAngleMin"],
+                    max=result["ScanAngleMax"],
+                )
+            )
+
+        if result.get("HasGPSTime"):
+            gps_type = result.get("GPSTimeType") or ""
+            lines.append(
+                tr(
+                    "las_gps_time_range",
+                    min=result["GPSTimeMin"],
+                    max=result["GPSTimeMax"],
+                    type=gps_type,
+                )
+            )
+        else:
+            lines.append(tr("las_gps_time_unavailable"))
+
+        lines.append(tr("las_flight_line_count", count=result.get("FlightLineCount", 0)))
+        lines.append("")
+        lines.append(tr("las_sensor_note"))
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr("dialog_title_las_analysis"))
+        dialog.setMinimumSize(480, 380)
         dialog_layout = QVBoxLayout()
 
         result_display = QTextEdit()

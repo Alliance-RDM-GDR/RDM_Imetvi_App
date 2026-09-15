@@ -323,6 +323,28 @@ script's own behavior: it doesn't error on a missing CRS, just prints a
 note asking the curator to confirm the coordinate system is documented
 elsewhere (e.g. a README).
 
+### Point-level analysis (opt-in, not part of the load path)
+
+`analyze_las_point_data()` in the same module answers what the header
+alone can't: point classification breakdown, scan angle range, GPS time
+range (only for point formats that store it), and a flight-line count
+(distinct `point_source_id` values). This requires actually reading every
+point record — for LAZ, decompressing them — so it's deliberately kept
+**out** of `parse_las_metadata()` and the normal load path; running it on
+every file in a folder batch would undermine the header-only design's
+whole reason for being fast. It's exposed instead as a separate,
+on-demand sidebar action (`main.py::analyze_las_points()`, enabled only
+when a LAS/LAZ file is the one currently displayed), reading points in
+bounded-size chunks (`laspy`'s `chunk_iterator()`) so memory stays flat
+regardless of point count.
+
+Two fields are explicitly **not** attempted: sensor model and flying
+height. Neither the LAS/LAZ header nor its point records store
+acquisition-platform parameters at all — there is nothing in the file to
+extract; that information lives only in external flight/mission-log
+documentation, the same category of gap as REMBI's Biosample/Specimen
+fields for microscopy.
+
 ## CZI unit conversion and sentinel handling
 
 `metadata_parsers/czi_parser.py` corrects two values Zeiss's CZI XML

@@ -122,6 +122,26 @@ STRINGS_FR = {
     "msg_csv_success": "Fichier CSV enregistré avec succès.",
     "msg_csv_failed": "Échec de l'enregistrement du fichier CSV : {error}",
 
+    # --- Sidebar: LiDAR ---
+    "group_lidar": "LiDAR",
+    "btn_analyze_las": "Analyser la classification des points",
+    "tooltip_analyze_las": "Lit les enregistrements de points complets (pas seulement l'en-tête) pour indiquer la répartition des classifications, la plage d'angle de balayage, la plage de temps GPS et le nombre de lignes de vol. Plus lent que le chargement normal — LAS/LAZ uniquement.",
+
+    # --- LAS point-data analysis dialog ---
+    "dialog_title_las_analysis": "Analyse des points LAS/LAZ",
+    "las_analysis_header": "Analyse des points — {filename}",
+    "las_classification_header": "Répartition de la classification des points :",
+    "las_scan_angle_range": "Plage d'angle de balayage : {min:.1f}° à {max:.1f}°",
+    "las_gps_time_range": "Plage de temps GPS : {min:.3f} à {max:.3f} ({type})",
+    "las_gps_time_unavailable": "Temps GPS : non stocké par ce format de point.",
+    "las_flight_line_count": "Lignes de vol (identifiants de source de point distincts) : {count}",
+    "las_sensor_note": (
+        "Remarque : le modèle du capteur et l'altitude de vol ne sont "
+        "stockés nulle part dans un fichier LAS/LAZ (ni l'en-tête ni les "
+        "points) — ces informations se trouvent dans la documentation "
+        "externe du vol/de la mission, pas dans le nuage de points lui-même."
+    ),
+
     # --- Batch compliance summary dialog ---
     "dialog_title_batch_compliance": "Résumé de conformité du lot",
     "compliance_summary_header": "{compliant} / {total} fichiers entièrement conformes (aucun champ requis manquant, aucun indicateur de curation)",

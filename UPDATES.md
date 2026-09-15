@@ -7,6 +7,60 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-09-15 — Add on-demand LAS point classification analysis
+
+Asked whether the "point classification scheme / flight parameters not
+covered" gap noted in the LAS support commit's `standards_registry.py`
+entry could be solved. Verified what's actually derivable before
+committing to an approach: point classification, scan angle, GPS time,
+and flight-line ID all live in the point *records*, not the header, and
+are genuinely readable; sensor model and flying height are not stored
+anywhere in a LAS/LAZ file at all (header or points) — confirmed by
+inspecting `laspy`'s point-format dimension list directly rather than
+assuming.
+
+- Added `analyze_las_point_data()` to `metadata_parsers/las_parser.py`:
+  reads point records in bounded-size chunks (`laspy.chunk_iterator()`,
+  2M points/chunk) so memory stays flat regardless of point count.
+  Reports a classification histogram (mapped through the ASPRS standard
+  code table — Ground/Building/Vegetation/Water/etc., with a generic
+  fallback for reserved/user-definable codes), scan angle min/max
+  (handles both the legacy `scan_angle_rank` and extended-format
+  `scan_angle` field names), GPS time min/max plus which GPS time
+  encoding the file uses (only for point formats 1/3/6/7/8/9/10, which
+  store it), and a flight-line count (distinct `point_source_id`
+  values).
+- Found and fixed a real bug while testing against a legacy point format
+  (0-5): `classification` (and `scan_angle_rank`) come back from `laspy`
+  as `SubFieldView` objects on those formats — sub-byte packed-field
+  wrappers, not plain arrays — so `.tolist()` failed. Fixed with
+  `np.asarray(...)` before conversion, verified against both a legacy
+  and an extended-format synthetic fixture.
+- Deliberately **not** wired into `parse_las_metadata()` or the normal
+  load path — decompressing and scanning every point is much slower than
+  the header-only read this format was built around; doing it
+  automatically for every file in a folder batch would defeat that
+  design entirely. Exposed instead as a new sidebar action, "Analyze
+  Point Classification" (new `LiDAR` group, between Integrity and View),
+  enabled only when the *currently displayed* file's format is LAS —
+  same enable/disable pattern as `write_metadata_btn`.
+- The result dialog explicitly states the sensor/flying-height
+  limitation rather than leaving it implicit, so a curator doesn't waste
+  time looking for a field that was never coming.
+- 7 new tests in `tests/test_las_parser.py` (classification name lookup,
+  classification breakdown, scan angle range, GPS time presence/absence
+  across point formats, missing-file handling).
+- Bilingual (EN/FR), including the classification names' surrounding
+  labels — the ASPRS classification names themselves stay in English
+  (a controlled vocabulary term, same treatment as CF `standard_name` for
+  NetCDF).
+- Full suite: 189/189. Visual GUI verification wasn't possible this
+  session — the same display-capture issue from the previous session
+  persisted (one monitor renders black regardless of content) — so this
+  relied on the automated tests plus direct interactive verification of
+  `analyze_las_point_data()` against hand-built synthetic fixtures
+  (legacy and extended point formats) for confidence.
+
 ## 2026-09-15 — Add LAS/LAZ LiDAR support
 
 The user added `Inspect_LAS_Script.R` to `CUR_Res_CurationTools/Scripts/`

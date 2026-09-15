@@ -38,6 +38,15 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   EXIF-style fields (camera, date, resolution) instead of REMBI
   microscopy fields.
 
+- 🛰️ **LAS/LAZ point classification analysis** (on demand) — beyond the
+  header fields every LAS/LAZ file shows on load, a **LiDAR** sidebar
+  action reads the full point records to report point classification
+  breakdown (ground/vegetation/building/water/etc.), scan angle range,
+  GPS time range, and flight-line count. Kept separate from the normal
+  load path since it's slower (reads every point); sensor model and
+  flying height are not stored in LAS/LAZ files at all, so the app says
+  so rather than guessing.
+
 - 📁 Load a single file or an entire folder (batch loading runs off the UI
   thread with a progress bar).
 - 🇨🇦 **Bilingual EN/FR interface** — a language selector switches every

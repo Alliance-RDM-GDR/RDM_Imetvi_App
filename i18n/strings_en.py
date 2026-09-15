@@ -121,6 +121,25 @@ STRINGS_EN = {
     "msg_csv_success": "CSV file saved successfully.",
     "msg_csv_failed": "Failed to save CSV: {error}",
 
+    # --- Sidebar: LiDAR ---
+    "group_lidar": "LiDAR",
+    "btn_analyze_las": "Analyze Point Classification",
+    "tooltip_analyze_las": "Reads the full point records (not just the header) to report classification breakdown, scan angle range, GPS time range, and flight-line count. Slower than the normal load — LAS/LAZ only.",
+
+    # --- LAS point-data analysis dialog ---
+    "dialog_title_las_analysis": "LAS/LAZ Point Analysis",
+    "las_analysis_header": "Point Analysis — {filename}",
+    "las_classification_header": "Point classification breakdown:",
+    "las_scan_angle_range": "Scan angle range: {min:.1f}° to {max:.1f}°",
+    "las_gps_time_range": "GPS time range: {min:.3f} to {max:.3f} ({type})",
+    "las_gps_time_unavailable": "GPS time: not stored by this point format.",
+    "las_flight_line_count": "Flight lines (distinct point source IDs): {count}",
+    "las_sensor_note": (
+        "Note: sensor model and flying height are not stored anywhere in a "
+        "LAS/LAZ file (header or point records) — those live in external "
+        "flight/mission log documentation, not in the point cloud itself."
+    ),
+
     # --- Batch compliance summary dialog ---
     "dialog_title_batch_compliance": "Batch Compliance Summary",
     "compliance_summary_header": "{compliant} / {total} files fully compliant (no missing required fields, no curation flags)",

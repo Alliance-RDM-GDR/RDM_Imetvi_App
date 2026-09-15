@@ -96,6 +96,10 @@ sin descomprimir los puntos).
 - Standardizer con mapeo a ISO 19115 / ASPRS LAS
 - Flag de curaduría nuevo: `NO_CRS_FOUND` (generalizado a cualquier
   contexto georreferenciado — GeoTIFF, NetCDF, LAS)
+- Extensión: `analyze_las_point_data()` — lectura opcional bajo demanda
+  de los puntos completos (no solo cabecera) para clasificación de
+  puntos, ángulo de escaneo, tiempo GPS y líneas de vuelo. Altura de
+  vuelo/sensor confirmado como no extraíble (no vive en el archivo LAS)
 
 ---
 
