@@ -7,6 +7,54 @@ listed newest first. For the underlying task tracking, see
 
 ---
 
+## 2026-09-15 — Add LAS/LAZ LiDAR support
+
+The user added `Inspect_LAS_Script.R` to `CUR_Res_CurationTools/Scripts/`
+and asked whether it could be brought into IMetVi. It's a header-only
+inspector for LiDAR point cloud files (.las/.laz) — a natural addition
+alongside GeoTIFF and NetCDF in the existing Remote Sensing family.
+
+- Added `metadata_parsers/las_parser.py` (via `laspy`, with `pyproj` for
+  CRS and `lazrs` as the LAZ decompression backend): reads only the LAS
+  header/VLRs — point data is never decompressed, matching the R
+  script's fast, header-only design. Reports LAS version, point format
+  (decoded from the numeric Point Data Format ID into what each point
+  record stores — XYZ only, +GPS time, +RGB, +NIR), point count, 3D
+  bounding box, CRS (via `header.parse_crs()`, which reads whichever VLR
+  the file uses), generating software, and creation date.
+- Added `standardizers/las_lidar_standardizer.py` and
+  `metadata_profiles/las_lidar_profile.py`, registered as a new
+  `Remote Sensing (LiDAR)` context (`FORMAT_REGISTRY["LAS"]`,
+  extensions `.las`/`.laz`).
+- Unlike GeoTIFF (a TIFF with no CRS silently falls back to the plain
+  TIFF parser), a LAS/LAZ file with no embedded CRS is common and still
+  a valid, useful point cloud — `REQUIRED_FIELDS_REGISTRY["LAS"]` does
+  not include `CRS_EPSG`. Instead, added a general `NO_CRS_FOUND`
+  curation flag (`utils/curation_flags.py::_lacks_crs()`) that fires for
+  *any* context reporting an empty `CRS_WKT` (GeoTIFF, NetCDF, LAS
+  alike) — mirroring the R script's own behavior, which doesn't error on
+  a missing CRS, just asks the curator to confirm it's documented
+  elsewhere (e.g. a README).
+- `standards_registry.py` gained a `Remote Sensing (LiDAR)` entry
+  (ISO 19115 + ASPRS LAS spec), honestly noting what a header-only read
+  can't cover: point classification scheme and acquisition parameters
+  (sensor, flying height, scan angle) require reading full point
+  records, not just the header.
+- Unlike LIF/CZI, `laspy` can write files, so tests use real synthetic
+  `.las` fixtures rather than mocks: 9 tests in
+  `tests/test_las_parser.py`, plus 3 more in `tests/test_curation_flags.py`
+  for the new `NO_CRS_FOUND` flag (fires only when `CRS_WKT` is present-
+  but-empty, never when the key is absent for non-georeferenced formats).
+- Added `laspy>=2.5`, `lazrs>=0.5`, `pyproj>=3.5` to `requirements.txt`.
+- Verified by hand-building and re-reading a synthetic LAS file with a
+  real CRS (EPSG:26920) through the actual parser code in an interactive
+  session — every field matched exactly (version, point format, point
+  count, bounding box, CRS). Interactive GUI screenshot verification
+  wasn't possible this session due to a display-capture issue unrelated
+  to the code change (one monitor consistently rendered black regardless
+  of content); the full automated suite (182/182) and the direct
+  read/write verification stand in for it.
+
 ## 2026-08-27 — Batch Compliance Summary
 
 Asked for a recommendation on what would most complement the app's

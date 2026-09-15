@@ -163,6 +163,31 @@ STANDARDS_REGISTRY = {
             "'history' and 'source' global attributes.",
         ],
     },
+    "Remote Sensing (LiDAR)": {
+        "standard_name": "ISO 19115 (Geographic Information — Metadata) / ASPRS LAS",
+        "reference_url": "https://www.iso.org/standard/53798.html",
+        "secondary_url": "https://www.asprs.org/divisions-committees/lidar-division/laser-las-file-format-exchange-activities",
+        "secondary_label": "ASPRS — LAS specification",
+        "covered": [
+            "LAS version, point data format (what each point record stores — "
+            "XYZ only, +GPS time, +RGB color, +near-infrared), point count, "
+            "3D bounding box (X/Y/Z min-max), generating software, creation date.",
+            "Spatial reference: CRS (EPSG code, WKT), read from the header's "
+            "GeoTIFF-key or LAS 1.4 WKT projection tag, when present.",
+        ],
+        "not_covered": [
+            "CRS is frequently absent from LAS/LAZ headers even in otherwise "
+            "well-formed files — this is common practice, not necessarily an "
+            "error, but means the coordinate system must be confirmed from "
+            "project documentation (e.g. a README) rather than assumed. "
+            "Flagged as a NO_CRS_FOUND curation risk when missing.",
+            "Point classification scheme, flight/acquisition parameters "
+            "(sensor, flying height, scan angle), and point density are not "
+            "summarized — those require reading the full point records, not "
+            "just the header, and are outside this app's header-only, "
+            "fast-inspection design.",
+        ],
+    },
     "Astronomy": {
         "standard_name": "FITS (Flexible Image Transport System)",
         "reference_url": "https://fits.gsfc.nasa.gov/fits_standard.html",

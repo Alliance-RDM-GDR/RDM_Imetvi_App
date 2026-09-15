@@ -72,6 +72,11 @@ REQUIRED_FIELDS_REGISTRY = {
     "NetCDF": [
         "Conventions", "DimensionCount", "VariableCount",
     ],
+    "LAS": [
+        "LASVersion", "PointFormatDescription", "PointCount",
+        "BoundingBox_MinX", "BoundingBox_MinY",
+        "BoundingBox_MaxX", "BoundingBox_MaxY",
+    ],
 }
 
 

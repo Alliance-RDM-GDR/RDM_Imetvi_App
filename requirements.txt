@@ -11,4 +11,7 @@ pydicom>=2.4
 astropy>=5.3
 readlif>=0.6.6
 netCDF4>=1.6
+laspy>=2.5
+lazrs>=0.5
+pyproj>=3.5
 pytest>=7.4

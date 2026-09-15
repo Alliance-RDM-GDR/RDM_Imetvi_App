@@ -27,6 +27,7 @@ from metadata_parsers.hdf5_parser import parse_hdf5_metadata
 from metadata_parsers.png_parser import parse_png_metadata
 from metadata_parsers.lif_parser import parse_lif_metadata
 from metadata_parsers.netcdf_parser import parse_netcdf_metadata
+from metadata_parsers.las_parser import parse_las_metadata
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -39,6 +40,7 @@ from standardizers.hdf5_general_standardizer import standardize_hdf5_general_met
 from standardizers.png_general_standardizer import standardize_png_general_metadata
 from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
 from standardizers.netcdf_remote_sensing_standardizer import standardize_netcdf_remote_sensing_metadata
+from standardizers.las_lidar_standardizer import standardize_las_lidar_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
@@ -115,6 +117,11 @@ FORMAT_REGISTRY = {
         "parser": parse_netcdf_metadata,
         "contexts": ["Remote Sensing (NetCDF)"],
     },
+    "LAS": {
+        "extensions": [".las", ".laz"],
+        "parser": parse_las_metadata,
+        "contexts": ["Remote Sensing (LiDAR)"],
+    },
 }
 
 # Maps each (format, context) pair to the standardizer that produces that
@@ -138,6 +145,7 @@ FORMAT_STANDARDIZERS = {
     "PNG": {"General / EXIF": standardize_png_general_metadata},
     "LIF": {"Microscopy (Leica)": standardize_lif_microscopy_metadata},
     "NetCDF": {"Remote Sensing (NetCDF)": standardize_netcdf_remote_sensing_metadata},
+    "LAS": {"Remote Sensing (LiDAR)": standardize_las_lidar_metadata},
 }
 
 
@@ -811,6 +819,7 @@ class MetadataViewer(QWidget):
             "DIMENSION_OUTLIER": "#8e44ad",
             "LOSSY_TIFF":        "#c0392b",
             "CORRUPT":           "#e74c3c",
+            "NO_CRS_FOUND":      "#e67e22",
         }
         flag_parts = []
         if flags_str and flags_str != "OK":

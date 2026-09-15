@@ -98,3 +98,31 @@ def test_lossy_tiff_flag_via_meta(synthetic_tiff):
     flags_by_path, _ = compute_curation_flags(results)
 
     assert "LOSSY_TIFF" in flags_by_path[synthetic_tiff]
+
+
+def test_no_crs_found_flag_when_crs_wkt_empty(synthetic_tiff):
+    # A georeferenced context (GeoTIFF/NetCDF/LAS) that reports CRS_WKT
+    # but leaves it blank — common for LAS/LAZ files with no embedded CRS.
+    meta = {"CRS_WKT": ""}
+    results = [_make_result(synthetic_tiff, meta=meta)]
+    flags_by_path, _ = compute_curation_flags(results)
+
+    assert "NO_CRS_FOUND" in flags_by_path[synthetic_tiff]
+
+
+def test_no_crs_found_flag_absent_when_crs_wkt_populated(synthetic_tiff):
+    meta = {"CRS_WKT": "PROJCS[\"NAD83 / UTM zone 20N\", ...]"}
+    results = [_make_result(synthetic_tiff, meta=meta)]
+    flags_by_path, _ = compute_curation_flags(results)
+
+    assert "NO_CRS_FOUND" not in flags_by_path[synthetic_tiff]
+
+
+def test_no_crs_found_flag_absent_when_key_not_present(synthetic_tiff):
+    # Non-georeferenced contexts (microscopy, etc.) never have a CRS_WKT
+    # key at all — the flag must not fire just because it's a Falsy .get().
+    meta = {"DimensionX": "32"}
+    results = [_make_result(synthetic_tiff, meta=meta)]
+    flags_by_path, _ = compute_curation_flags(results)
+
+    assert "NO_CRS_FOUND" not in flags_by_path[synthetic_tiff]

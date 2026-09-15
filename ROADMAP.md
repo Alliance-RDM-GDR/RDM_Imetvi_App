@@ -83,6 +83,20 @@ convenciones CF.
   dimensiones y coordenadas (lat/lon/time)
 - Standardizer con mapeo a ISO 19115 (mismo perfil que GeoTIFF)
 
+### B4. LAS/LAZ — nubes de puntos LiDAR [x]
+Adaptado de `CUR_Res_CurationTools/Scripts/Inspect_LAS_Script.R`, agregado
+a la caja de herramientas de curaduría. Lectura solo de cabecera (rápida,
+sin descomprimir los puntos).
+
+- Librería: `laspy` (+ `pyproj` para CRS, `lazrs` como backend LAZ)
+- Parser: `metadata_parsers/las_parser.py`
+- Extrae: versión LAS, formato de punto (decodificado), conteo de puntos,
+  bounding box 3D, CRS (opcional — común que esté ausente), software
+  generador, fecha de creación
+- Standardizer con mapeo a ISO 19115 / ASPRS LAS
+- Flag de curaduría nuevo: `NO_CRS_FOUND` (generalizado a cualquier
+  contexto georreferenciado — GeoTIFF, NetCDF, LAS)
+
 ---
 
 ## Bloque C — Mejoras de UI / UX

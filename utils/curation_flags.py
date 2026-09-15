@@ -1,8 +1,10 @@
 # utils/curation_flags.py
 #
 # Curation intelligence adapted from CUR_Res_CurationTools/Scripts/Inspect_Images_Script.R
+# and Inspect_LAS_Script.R.
 # Flags: DUPLICATE (MD5), CORRUPT (parser error), HAS_GPS_DATA (privacy risk),
-#        DIMENSION_OUTLIER (deviates from dataset mode), LOSSY_TIFF (JPEG-in-TIFF).
+#        DIMENSION_OUTLIER (deviates from dataset mode), LOSSY_TIFF (JPEG-in-TIFF),
+#        NO_CRS_FOUND (georeferenced context reports no embedded CRS).
 
 import hashlib
 from collections import Counter
@@ -35,6 +37,16 @@ def _has_gps(standardized_metadata):
             continue
         return True
     return False
+
+
+def _lacks_crs(standardized_metadata):
+    """
+    True when a context that reports CRS_WKT at all (GeoTIFF, NetCDF, LAS)
+    has it empty — i.e. no embedded coordinate reference system. Checking
+    for key *presence* first means this never fires for formats that don't
+    report CRS_WKT in the first place (e.g. microscopy contexts).
+    """
+    return "CRS_WKT" in standardized_metadata and not (standardized_metadata.get("CRS_WKT") or "").strip()
 
 
 def _dimensions(standardized_metadata):
@@ -99,6 +111,11 @@ def compute_curation_flags(results):
             meta.get("Compression") in ("6", "7", 6, 7)
         ):
             flags.append("LOSSY_TIFF")
+
+        # NO_CRS_FOUND — georeferenced context (GeoTIFF/NetCDF/LAS) with no
+        # embedded coordinate system; common for LAS/LAZ specifically
+        if _lacks_crs(meta):
+            flags.append("NO_CRS_FOUND")
 
         flags_by_path[file_path] = flags
 

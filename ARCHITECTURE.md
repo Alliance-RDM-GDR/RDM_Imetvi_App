@@ -186,6 +186,7 @@ Loading a file:
 | HDF5 | `.h5 .hdf5 .nc4` | General / HDF5 | `hdf5_parser.py` | `hdf5_general_standardizer.py` |
 | LIF | `.lif` | Microscopy (Leica) | `lif_parser.py` | `lif_microscopy_standardizer.py` |
 | NetCDF | `.nc .nc4` | Remote Sensing (NetCDF) | `netcdf_parser.py` | `netcdf_remote_sensing_standardizer.py` |
+| LAS | `.las .laz` | Remote Sensing (LiDAR) | `las_parser.py` | `las_lidar_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -294,6 +295,33 @@ GeoTIFF was an inconsistency, not an intentional gap; `DataType` is now
 in `REQUIRED_FIELDS_REGISTRY["GeoTIFF"]`. `PixelInterpretation` stays
 informational only (not required) since many valid GeoTIFF writers
 never set the tag.
+
+## LAS/LAZ LiDAR support
+
+`metadata_parsers/las_parser.py` reads only the LAS header and VLRs via
+`laspy.open()` — point data is never decompressed, so this stays fast
+even on large point clouds, mirroring
+`CUR_Res_CurationTools/Scripts/Inspect_LAS_Script.R`'s header-only
+design (that R script, added to the curation toolbox, was the direct
+source for this parser). Reports LAS version, point format (decoded from
+the numeric Point Data Format ID into what each point record actually
+stores — XYZ only, +GPS time, +RGB, +NIR), point count, 3D bounding box,
+CRS (via `laspy`'s `header.parse_crs()`, which reads whichever VLR the
+file uses — GeoTIFF-key style or LAS 1.4 OGC WKT), generating software,
+and creation date.
+
+CRS is treated as **optional**, unlike GeoTIFF (where a TIFF with no CRS
+falls back to the plain TIFF parser entirely — see below). A LAS/LAZ
+file with no embedded coordinate system is common and still a valid,
+useful point cloud; `REQUIRED_FIELDS_REGISTRY["LAS"]` does not include
+`CRS_EPSG`. Instead, `utils/curation_flags.py::_lacks_crs()` adds a
+`NO_CRS_FOUND` curation flag whenever a context reports a `CRS_WKT` key
+at all (currently GeoTIFF, NetCDF, LAS) but it's empty — checking for key
+*presence* first means this never fires for non-georeferenced contexts
+that don't report `CRS_WKT` in the first place. This mirrors the R
+script's own behavior: it doesn't error on a missing CRS, just prints a
+note asking the curator to confirm the coordinate system is documented
+elsewhere (e.g. a README).
 
 ## CZI unit conversion and sentinel handling
 

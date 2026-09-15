@@ -27,6 +27,7 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   | HDF5 | `.h5` `.hdf5` `.nc4` | Generic container inspection |
   | LIF (Leica) | `.lif` | REMBI (microscopy) |
   | NetCDF | `.nc` `.nc4` | ISO 19115 via CF Conventions |
+  | LAS/LAZ (LiDAR) | `.las` `.laz` | ISO 19115 / ASPRS LAS |
 
   Formats sharing an extension (TIFF / OME-TIFF / GeoTIFF all use
   `.tif`/`.tiff`; HDF5 / NetCDF both cover `.nc4`) are selected explicitly
@@ -61,6 +62,7 @@ organized, [`ROADMAP.md`](ROADMAP.md) for planned/in-progress work, and
   - `HAS_GPS_DATA` — GPS metadata present (privacy/consent flag)
   - `DIMENSION_OUTLIER` — dimensions deviate from the batch's most common size
   - `LOSSY_TIFF` — TIFF using internal JPEG compression
+  - `NO_CRS_FOUND` — a georeferenced format (GeoTIFF/NetCDF/LAS) with no embedded coordinate system
 - ⚠️ **Missing required fields** — each format declares the standardized
   fields a well-formed capture is expected to have; gaps are shown in red
   at the top of the Recommended Fields tab and exported as a
@@ -134,9 +136,12 @@ This project is licensed under the MIT License. See LICENSE for details.
 - IPTC read/write: [iptcinfo3](https://github.com/jkelleyrtp/iptcinfo3)
 - GeoTIFF / geospatial: [rasterio](https://rasterio.readthedocs.io/)
 - HDF5: [h5py](https://www.h5py.org/)
+- NetCDF: [netCDF4](https://unidata.github.io/netcdf4-python/)
+- LiDAR / LAS-LAZ: [laspy](https://laspy.readthedocs.io/) + [pyproj](https://pyproj4.github.io/pyproj/)
 - DICOM: [pydicom](https://pydicom.github.io/)
 - FITS: [astropy](https://www.astropy.org/)
 - REMBI Guidelines: https://doi.org/10.1038/s41592-021-01166-8
 - OME-XML spec: https://www.openmicroscopy.org/ome-files/
 - ISO 19115 (geospatial metadata): https://www.iso.org/standard/53798.html
 - IPTC standard: https://www.iptc.org/std/photometadata/specification/
+- ASPRS LAS specification: https://www.asprs.org/divisions-committees/lidar-division/laser-las-file-format-exchange-activities
