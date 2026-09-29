@@ -64,6 +64,12 @@ REQUIRED_FIELDS_REGISTRY = {
     "FITS": [
         "Telescope", "Instrument", "ObservationDate",
         "DimensionX", "DimensionY",
+        # Present whenever the HDU inventory succeeded, so a truncated or
+        # partly unreadable file is flagged even if primary-header keys parsed.
+        "HDUCount",
+    ],
+    "PPMstar": [
+        "FileType", "Code", "RunLabel",
     ],
     "LIF": [
         "DimensionX", "DimensionY", "PixelSizeX", "PixelSizeY",
@@ -71,6 +77,17 @@ REQUIRED_FIELDS_REGISTRY = {
     ],
     "NetCDF": [
         "Conventions", "DimensionCount", "VariableCount",
+    ],
+    # Only fields a NIfTI header itself guarantees are required: sidecar-derived
+    # fields (TE/TR, scanner) are checked by the BIDS suggestions instead, since
+    # a non-BIDS NIfTI (e.g. an atlas) legitimately has no sidecar.
+    "NIfTI": [
+        "MatrixSizeX", "MatrixSizeY", "MatrixSizeZ",
+        "VoxelSizeX", "VoxelSizeY", "VoxelSizeZ", "DataType",
+    ],
+    "OME-Zarr": [
+        "DimensionX", "DimensionY", "PixelSizeX", "PixelSizeY",
+        "PixelType", "Channels", "NA", "Magnification",
     ],
     "LAS": [
         "LASVersion", "PointFormatDescription", "PointCount",

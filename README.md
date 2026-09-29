@@ -22,11 +22,14 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   | JPG / JPEG | `.jpg` `.jpeg` | EXIF + IPTC + XMP |
   | PNG | `.png` | EXIF-style general fields |
   | DICOM | `.dcm` | DICOM PS3.3 (patient-identifying fields excluded by design) |
-  | FITS | `.fits` `.fit` | FITS / WCS (astronomy) |
+  | FITS | `.fits` `.fit` | FITS / WCS (astronomy); all HDUs inventoried (images, tables, compressed) |
   | HDF5 | `.h5` `.hdf5` `.nc4` | Generic container inspection |
   | LIF (Leica) | `.lif` | REMBI (microscopy) |
   | NetCDF | `.nc` `.nc4` | ISO 19115 via CF Conventions |
   | LAS/LAZ (LiDAR) | `.las` `.laz` | ISO 19115 / ASPRS LAS |
+  | NIfTI (MRI, BIDS) | `.nii` `.nii.gz` (+ JSON sidecar, `.bval/.bvec`) | BIDS 1.9.0 / NIfTI-1 / ARRIVE 2.0 |
+  | OME-Zarr (light-sheet, BIDS Microscopy) | `.zarr` folder, or an uncompressed BIDS `.tar` (read in place, never extracted) | OME-NGFF 0.4 / BIDS Microscopy / REMBI |
+  | PPMstar (stellar hydrodynamics output) | `.rprof` `.hstry` `.include` `.F` and raw cube blocks `.aaa`–`.ccc` | IVOA SimDM (descriptive core) |
 
   Formats sharing an extension (TIFF / OME-TIFF / GeoTIFF all use
   `.tif`/`.tiff`; HDF5 / NetCDF both cover `.nc4`) are selected explicitly
@@ -80,6 +83,15 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   - `DIMENSION_OUTLIER` — dimensions deviate from the batch's most common size
   - `LOSSY_TIFF` — TIFF using internal JPEG compression
   - `NO_CRS_FOUND` — a georeferenced format (GeoTIFF/NetCDF/LAS) with no embedded coordinate system
+  - `INCOMPLETE_DUMP` — a PPMstar cube block whose dump is missing sibling files
+  - `UNDOCUMENTED_VARIABLES` — a PPMstar cube block with no `variables.json` nearby (headerless data, unknown variables)
+  - `RESTART_RECORDS` — a PPMstar `.hstry` that records some dumps more than once (run restarted from a checkpoint)
+  - `BIDS_TEMPLATE_METADATA` — dataset_description/sidecar still hold template text or unresolved converter placeholders
+  - `BIDS_DATASET_INCOMPLETE` — missing license/authors, or a required sidecar field/`.bval`/`.bvec` for the image type
+  - `NIFTI_NO_SFORM` — NIfTI with no sform (or no spatial transform at all)
+- 💡 **Standards suggestions** — for NIfTI and OME-Zarr the Recommended
+  Fields and Curation tabs list concrete, standard-referenced actions
+  (BIDS, NIfTI-1, ARRIVE 2.0, OME-NGFF, REMBI), in English or French.
 - ⚠️ **Missing required fields** — each format declares the standardized
   fields a well-formed capture is expected to have; gaps are shown in red
   at the top of the Recommended Fields tab and exported as a
@@ -94,6 +106,13 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
 - 🔒 **Cross-session integrity verification** — `Save Checksums` persists
   a `checksums.json` manifest per folder; `Verify Integrity` re-scans and
   reports `OK` / `MODIFIED` / `MISSING` / `NEW` per file.
+- 🧾 **Dataset manifest verification** — `Verify Manifest` checks a
+  folder against its own `MANIFEST.sha256` (`sha256sum` format). It first
+  compares names only (seconds, even for tens of thousands of files) and
+  lists files on disk that the manifest omits and files it lists that are
+  gone; then, on request, streams every file through SHA-256 in a
+  background thread with a progress bar and a Cancel button (safe on
+  datasets near 1 TB) and reports `MODIFIED` / `MISSING` / `UNREADABLE`.
 - 📋 **Batch Compliance Summary** — aggregates missing-required-field and
   curation-flag counts across a whole loaded batch into one dataset-wide
   readiness snapshot ("N / M files fully compliant", ranked by which

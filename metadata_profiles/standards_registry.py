@@ -83,6 +83,77 @@ STANDARDS_REGISTRY = {
             "JPEG only; a TIFF's IPTC/XMP data, if present, is not extracted.",
         ],
     },
+    "Neuroimaging (BIDS)": {
+        "standard_name": "BIDS 1.9.0 (Brain Imaging Data Structure) — MRI, with NIfTI-1 and ARRIVE 2.0",
+        "reference_url": "https://bids-specification.readthedocs.io/en/v1.9.0/",
+        "secondary_url": "https://nifti.nimh.nih.gov/nifti-1",
+        "secondary_label": "NIfTI-1 header specification (also: ARRIVE 2.0 guidelines, arriveguidelines.org)",
+        "covered": [
+            "Image geometry from the NIfTI header: matrix size, voxel size and "
+            "units, volume count and time step, data type, orientation, "
+            "qform/sform codes. Header only — voxel data is never read.",
+            "BIDS filename entities (sub, ses, task, dir) and suffix "
+            "(T2w, dwi, bold); datatype folder (anat, dwi, func).",
+            "Acquisition parameters from the JSON sidecar (with BIDS inheritance): "
+            "scanner, field strength, sequence, TE/TR, flip angle, phase "
+            "encoding, readout time, slice timing, task.",
+            "Diffusion gradients: b-values and b=0 volume count from .bval/.bvec.",
+            "Dataset context: dataset_description.json (name, BIDS version, "
+            "license, authors, DOI) and participants.tsv column names.",
+            "Suggestions: missing license/authors/DOI, template or unresolved "
+            "converter placeholders, missing required sidecar fields for the "
+            "image type, missing animal descriptors, and a missing sform.",
+        ],
+        "not_covered": [
+            "Animal-study details (species, strain, sex, age, injury model, "
+            "anesthesia, group allocation): BIDS has no small-animal MRI "
+            "extension and scanners do not embed them. Add them to "
+            "participants.tsv and follow ARRIVE 2.0.",
+            "participants.tsv values are deliberately not read (they can hold "
+            "human demographics); only column names are reported.",
+            "Full BIDS validation (every entity/file-naming rule, "
+            "cross-file consistency): use the official bids-validator for "
+            "that. This app reports the metadata gaps a curator acts on.",
+            "Voxel data: image statistics, motion or SNR quality metrics "
+            "(use MRIQC) are outside this header-only inspection.",
+        ],
+    },
+    "Microscopy (OME-Zarr)": {
+        "standard_name": "OME-NGFF 0.4 (OME-Zarr) with BIDS Microscopy (BEP031) and REMBI",
+        "reference_url": "https://ngff.openmicroscopy.org/0.4/",
+        "secondary_url": "https://bids-specification.readthedocs.io/en/stable/appendices/microscopy.html",
+        "secondary_label": "BIDS Microscopy specification (also: REMBI, doi:10.1038/s41592-021-01166-8)",
+        "covered": [
+            "OME-NGFF: axes (names, types, units), multiscale pyramid levels, "
+            "scale transforms (pixel size normalized to µm), channel labels "
+            "(omero), array shape, chunking, data type, compression. Zarr v2 "
+            "and v3 metadata are both read.",
+            "BIDS Microscopy JSON sidecar: acquired pixel size and units, "
+            "magnification, numerical aperture, immersion, instrument "
+            "model, acquisition software.",
+            "Downsampling factor between the acquired pixel size (sidecar) "
+            "and the stored pyramid level.",
+            "Dataset context: dataset_description.json, samples.tsv columns, "
+            "conversion software (GeneratedBy). Works on a .zarr folder or "
+            "directly inside an uncompressed BIDS .tar, without extracting it.",
+            "Suggestions: template dataset_description, missing required "
+            "sidecar fields, missing REMBI Biosample/Specimen information, "
+            "unnamed channels, axes without units.",
+        ],
+        "not_covered": [
+            "Biosample and Specimen (REMBI): organism, strain, genotype, "
+            "treatment/group, clearing protocol, antibodies/reporters are not "
+            "stored in the image; supply them in samples.tsv/samples.json or "
+            "the study record.",
+            "Per-channel excitation/emission: light-sheet sidecars often "
+            "carry a single wavelength pair for a multi-channel image; it is "
+            "then withheld rather than attributed to a wrong channel.",
+            "Pixel values, and pyramid levels that were not deposited "
+            "(only the levels listed in the metadata exist in the file).",
+            "Labels/segmentation (OME-NGFF labels), plates/wells and "
+            "transformations other than scale.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "reference_url": "https://www.dicomstandard.org/",
@@ -188,20 +259,67 @@ STANDARDS_REGISTRY = {
             "fast-inspection design.",
         ],
     },
+    "Astrophysical Simulation": {
+        "standard_name": "IVOA Simulation Data Model (SimDM) — descriptive core only",
+        "reference_url": "https://www.ivoa.net/documents/SimDM/",
+        "secondary_url": "https://doi.org/10.1038/sdata.2016.18",
+        "secondary_label": "FAIR Guiding Principles (Wilkinson et al. 2016)",
+        "covered": [
+            "Run identity: code, run label, run ID, dump number, simulated time.",
+            "Numerical setup read from the output: hydrodynamic grid, boundary "
+            "radii, number of fluids, heating/burning switches, MPI layout.",
+            "Time integration: time step, Courant number, run history with "
+            "restart detection, maximum Mach number.",
+            "Data layout of raw 3-D cubes (sub-cube geometry, completeness) and, "
+            "when a variables.json is present, variable names and units.",
+            "Initial stratification (setup file): stellar model, radial range, "
+            "base-state constants.",
+        ],
+        "not_covered": [
+            "Authors, licence, DOI, funding and citation: these live in the "
+            "dataset README/release.json, not in the simulation files, and must "
+            "be supplied at deposit.",
+            "Code version and physics options beyond the flags a data release "
+            "ships (PPMstar is proprietary; its full configuration is withheld).",
+            "Cube data values (ranges, NaN masks, spherical averages): cubes "
+            "are sized, never read — they reach 2.3 GB per file.",
+            "Cube variable names and units when no variables.json sits within "
+            "four folders of the cube: raw float32 blocks are headerless.",
+            "Whole-file checksums: use the Integrity > Verify Manifest action "
+            "against the dataset's MANIFEST.sha256.",
+        ],
+    },
     "Astronomy": {
         "standard_name": "FITS (Flexible Image Transport System)",
         "reference_url": "https://fits.gsfc.nasa.gov/fits_standard.html",
         "secondary_url": "https://docs.astropy.org/en/stable/io/fits/",
         "secondary_label": "astropy.io.fits documentation",
         "covered": [
-            "Header cards: telescope, instrument, object, observation date, "
-            "exposure time, filter, dimensions.",
+            "Header cards: telescope, instrument, object, observation date "
+            "(DATE-OBS, MJD-OBS, DATE-END), exposure time, filter, dimensions, "
+            "author/origin/creator, observer, proposal ID, time system, BUNIT, "
+            "BSCALE/BZERO.",
             "WCS (World Coordinate System): reference value/pixel, pixel scale, "
-            "coordinate type, reference frame, equinox.",
+            "CD or PC matrix, axis units, pole angles, coordinate type, reference "
+            "frame, equinox; plus a check that astropy can build a celestial WCS "
+            "and the resulting pixel scale in arcsec/pixel.",
+            "HDU inventory: every HDU's type (image, binary/ASCII table, "
+            "compressed image), name, image shape and dtype, or table row and "
+            "column count with column names and units.",
+            "Images stored in an extension (multi-extension or compressed FITS): "
+            "dimensions, BITPIX, WCS and missing header keys are read from the "
+            "first 2-D image extension when the primary HDU is empty.",
+            "Number of HISTORY and COMMENT cards.",
         ],
         "not_covered": [
-            "Extension HDUs beyond the primary header (e.g. multi-extension "
-            "FITS with per-extension WCS) are not currently parsed.",
+            "Header keys of extensions other than the first 2-D image HDU (e.g. "
+            "per-detector WCS in a mosaic with several image extensions).",
+            "Pixel values and table contents: only headers are read, so image "
+            "statistics, saturation and table row data are not summarized.",
+            "The text of HISTORY/COMMENT cards, and instrument-specific keywords "
+            "(e.g. HST, JWST, Gemini conventions) beyond the common set.",
+            "Non-celestial WCS (spectral, time) axes and distortion terms (SIP, "
+            "TPV) beyond the validity check.",
         ],
     },
 }

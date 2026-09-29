@@ -28,6 +28,9 @@ from metadata_parsers.png_parser import parse_png_metadata
 from metadata_parsers.lif_parser import parse_lif_metadata
 from metadata_parsers.netcdf_parser import parse_netcdf_metadata
 from metadata_parsers.las_parser import parse_las_metadata, analyze_las_point_data
+from metadata_parsers.ppmstar_parser import parse_ppmstar_metadata, PPMSTAR_EXTENSIONS
+from metadata_parsers.nifti_parser import parse_nifti_metadata
+from metadata_parsers.omezarr_parser import parse_omezarr_metadata, OMEZARR_EXTENSIONS
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -41,14 +44,19 @@ from standardizers.png_general_standardizer import standardize_png_general_metad
 from standardizers.lif_microscopy_standardizer import standardize_lif_microscopy_metadata
 from standardizers.netcdf_remote_sensing_standardizer import standardize_netcdf_remote_sensing_metadata
 from standardizers.las_lidar_standardizer import standardize_las_lidar_metadata
+from standardizers.ppmstar_simulation_standardizer import standardize_ppmstar_simulation_metadata
+from standardizers.nifti_neuroimaging_standardizer import standardize_nifti_neuroimaging_metadata
+from standardizers.omezarr_microscopy_standardizer import standardize_omezarr_microscopy_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
 from utils.integrity import compute_md5, save_checksums, load_checksums, verify_checksums
+from utils.manifest import parse_manifest, check_coverage, verify_manifest, total_size, format_bytes
 from utils.thumbnail import generate_thumbnail_bytes
 from utils.curation_flags import compute_curation_flags
 from utils.compliance_summary import compute_batch_compliance_summary
 from utils.wkt_display import pretty_wkt
+from utils.bids import get_extension
 from metadata_profiles.standards_registry import get_standard_info, get_reference_summary
 from metadata_profiles.profile_registry import get_profile, format_label
 from metadata_profiles.required_fields_registry import compute_missing_fields
@@ -123,6 +131,27 @@ FORMAT_REGISTRY = {
         "parser": parse_las_metadata,
         "contexts": ["Remote Sensing (LiDAR)"],
     },
+    # Neuroimaging: NIfTI volumes, normally inside a BIDS dataset (sidecar JSON,
+    # .bval/.bvec, dataset_description.json are picked up around the image).
+    "NIfTI": {
+        "extensions": [".nii", ".nii.gz"],
+        "parser": parse_nifti_metadata,
+        "contexts": ["Neuroimaging (BIDS)"],
+    },
+    # OME-Zarr image, opened as a .zarr folder or from inside an uncompressed
+    # BIDS-Microscopy .tar (light-sheet deposits), never extracted.
+    "OME-Zarr": {
+        "extensions": OMEZARR_EXTENSIONS,
+        "parser": parse_omezarr_metadata,
+        "contexts": ["Microscopy (OME-Zarr)"],
+    },
+    # Simulation output, not images: radial profiles, run history, raw 3-D
+    # cube blocks and setup files of the PPMstar stellar hydrodynamics code.
+    "PPMstar": {
+        "extensions": PPMSTAR_EXTENSIONS,
+        "parser": parse_ppmstar_metadata,
+        "contexts": ["Astrophysical Simulation"],
+    },
 }
 
 # Maps each (format, context) pair to the standardizer that produces that
@@ -147,6 +176,9 @@ FORMAT_STANDARDIZERS = {
     "LIF": {"Microscopy (Leica)": standardize_lif_microscopy_metadata},
     "NetCDF": {"Remote Sensing (NetCDF)": standardize_netcdf_remote_sensing_metadata},
     "LAS": {"Remote Sensing (LiDAR)": standardize_las_lidar_metadata},
+    "PPMstar": {"Astrophysical Simulation": standardize_ppmstar_simulation_metadata},
+    "NIfTI": {"Neuroimaging (BIDS)": standardize_nifti_neuroimaging_metadata},
+    "OME-Zarr": {"Microscopy (OME-Zarr)": standardize_omezarr_microscopy_metadata},
 }
 
 
@@ -220,6 +252,42 @@ class FolderLoadWorker(QThread):
             results = enriched
 
         self.finished.emit(results)
+
+
+class ManifestVerifyWorker(QThread):
+    """Compares a dataset with its MANIFEST.sha256 off the UI thread.
+
+    mode "coverage" only lists names (fast); mode "full" also streams every
+    listed file through SHA-256 and can be cancelled between chunks."""
+
+    progress = pyqtSignal(int, int, str, object, object)  # files done, files total, path, bytes done, bytes total
+    done = pyqtSignal(dict)
+
+    def __init__(self, folder, entries, manifest_name, mode):
+        super().__init__()
+        self.folder = folder
+        self.entries = entries
+        self.manifest_name = manifest_name
+        self.mode = mode
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        out = {"coverage": None, "verify": None, "bytes_total": 0, "error": None}
+        try:
+            out["coverage"] = check_coverage(self.folder, self.entries, self.manifest_name)
+            if self.mode == "full":
+                out["verify"] = verify_manifest(
+                    self.folder, self.entries,
+                    progress=self.progress.emit, cancel=lambda: self._cancelled,
+                )
+            else:
+                out["bytes_total"] = total_size(self.folder, self.entries)
+        except Exception as e:
+            out["error"] = str(e)
+        self.done.emit(out)
 
 
 # Shared width for the left column (sidebar + thumbnail preview below it) —
@@ -313,6 +381,10 @@ class MetadataViewer(QWidget):
         self.load_folder_btn.clicked.connect(self.load_folder)
         file_group_layout.addWidget(self.load_folder_btn)
 
+        self.load_zarr_btn = QPushButton()
+        self.load_zarr_btn.clicked.connect(self.load_zarr_folder)
+        file_group_layout.addWidget(self.load_zarr_btn)
+
         self.file_group.setLayout(file_group_layout)
         sidebar_layout.addWidget(self.file_group)
 
@@ -370,6 +442,12 @@ class MetadataViewer(QWidget):
         self.verify_integrity_btn.clicked.connect(self.verify_integrity)
         self.verify_integrity_btn.setEnabled(False)
         integrity_group_layout.addWidget(self.verify_integrity_btn)
+
+        # Works on a whole dataset folder, not on the loaded files, so it is
+        # never disabled waiting for a load.
+        self.verify_manifest_btn = QPushButton()
+        self.verify_manifest_btn.clicked.connect(self.verify_manifest)
+        integrity_group_layout.addWidget(self.verify_manifest_btn)
 
         self.integrity_group.setLayout(integrity_group_layout)
         sidebar_layout.addWidget(self.integrity_group)
@@ -449,6 +527,8 @@ class MetadataViewer(QWidget):
         self.current_display_text_report = ""
         self.folder_worker = None
         self.progress_dialog = None
+        self.manifest_worker = None
+        self.manifest_progress = None
 
         self.retranslate_ui()
 
@@ -481,6 +561,8 @@ class MetadataViewer(QWidget):
         self.load_file_btn.setToolTip(tr("tooltip_load_file"))
         self.load_folder_btn.setText(tr("btn_load_folder"))
         self.load_folder_btn.setToolTip(tr("tooltip_load_folder"))
+        self.load_zarr_btn.setText(tr("btn_load_zarr"))
+        self.load_zarr_btn.setToolTip(tr("tooltip_load_zarr"))
 
         self.export_group.setTitle(tr("group_export"))
         self.export_json_btn.setText(tr("btn_export_json"))
@@ -502,6 +584,8 @@ class MetadataViewer(QWidget):
         self.save_checksums_btn.setToolTip(tr("tooltip_save_checksums"))
         self.verify_integrity_btn.setText(tr("btn_verify_integrity"))
         self.verify_integrity_btn.setToolTip(tr("tooltip_verify_integrity"))
+        self.verify_manifest_btn.setText(tr("btn_verify_manifest"))
+        self.verify_manifest_btn.setToolTip(tr("tooltip_verify_manifest"))
 
         self.lidar_group.setTitle(tr("group_lidar"))
         self.analyze_las_btn.setText(tr("btn_analyze_las"))
@@ -539,7 +623,7 @@ class MetadataViewer(QWidget):
             )
         else:
             self.thumbnail_display.setPixmap(QPixmap())
-            ext = os.path.splitext(file_path)[1].lstrip(".").upper() if file_path else ""
+            ext = get_extension(file_path).lstrip(".").upper() if file_path else ""
             self.thumbnail_display.setText(ext if ext else tr("label_no_preview"))
 
     # === Standards Documentation ===
@@ -592,7 +676,7 @@ class MetadataViewer(QWidget):
 
     def select_format_for_extension(self, file_path):
         """Auto-selects a format matching the file's extension, if not already compatible."""
-        ext = os.path.splitext(file_path)[1].lower()
+        ext = get_extension(file_path)
         candidates = formats_for_extension(ext)
         if not candidates:
             return
@@ -646,12 +730,13 @@ class MetadataViewer(QWidget):
         if not folder_path:
             return
 
-        file_paths = [
-            os.path.join(folder_path, fname)
-            for fname in os.listdir(folder_path)
-            if os.path.isfile(os.path.join(folder_path, fname))
-            and os.path.splitext(fname)[1].lower() in ALL_EXTENSIONS
-        ]
+        if folder_path.lower().endswith(".zarr"):
+            # the chosen folder is itself an OME-Zarr image, not a folder of images
+            self.select_format_for_extension(folder_path)
+            self.display_metadata(folder_path, single_file=True)
+            return
+
+        file_paths = self.collect_folder_files(folder_path)
 
         if not file_paths:
             QMessageBox.information(self, tr("msg_no_files_found_title"), tr("msg_no_files_found_text"))
@@ -674,6 +759,39 @@ class MetadataViewer(QWidget):
         self.folder_worker.finished.connect(self.on_folder_load_finished)
         self.progress_dialog.canceled.connect(self.folder_worker.terminate)
         self.folder_worker.start()
+
+    def collect_folder_files(self, folder_path):
+        """
+        Supported files in a folder. A BIDS dataset root (it holds a
+        dataset_description.json) is searched recursively, since images sit
+        in sub-*/ses-*/<datatype>/, restricted to the selected format's
+        extensions so sidecars and tables are not mistaken for images.
+        Otherwise only the folder's own entries are listed. A *.zarr
+        directory counts as one image and is never descended into.
+        """
+        recursive = os.path.isfile(os.path.join(folder_path, "dataset_description.json"))
+        wanted = set(ALL_EXTENSIONS)
+        if recursive:
+            fmt = FORMAT_REGISTRY.get(self.format_dropdown.currentText())
+            if fmt:
+                wanted = set(fmt["extensions"])
+        found = []
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            zarr_dirs = [d for d in dirnames if d.lower().endswith(".zarr")]
+            for d in sorted(zarr_dirs):
+                if get_extension(d) in wanted:
+                    found.append(os.path.join(dirpath, d))
+            dirnames[:] = sorted(d for d in dirnames if d not in zarr_dirs) if recursive else []
+            for fname in sorted(filenames):
+                if get_extension(fname) in wanted:
+                    found.append(os.path.join(dirpath, fname))
+        return found
+
+    def load_zarr_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_zarr"))
+        if folder_path:
+            self.format_dropdown.setCurrentText("OME-Zarr")
+            self.display_metadata(folder_path, single_file=True)
 
     def on_folder_load_progress(self, current, total, filename):
         if self.progress_dialog is not None:
@@ -724,6 +842,15 @@ class MetadataViewer(QWidget):
         cursor.setCharFormat(QTextCharFormat())
         text_edit.setTextCursor(cursor)
 
+    @staticmethod
+    def _format_suggestion(sug):
+        """One standards suggestion as an HTML fragment, in the active language."""
+        from html import escape
+        fr = get_language() == "FR" and sug.get("Message_fr")
+        msg = sug["Message_fr"] if fr else sug.get("Message", "")
+        return (f'<span style="color:#2471a3;">&bull; [{escape(sug.get("Standard", ""))}]</span> '
+                f'{escape(msg)}')
+
     def render_metadata(self, file_path, text_report, standardized_metadata):
         self.current_display_file_path = file_path
         self.current_display_metadata = standardized_metadata
@@ -751,7 +878,9 @@ class MetadataViewer(QWidget):
         self._reset_text_format(self.recommended_metadata_display)
         self.recommended_metadata_display.append(f"{tr('label_file')} {fname}\n")
 
-        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference", "_MissingFields"}
+        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference", "_MissingFields",
+                          "_Suggestions"}
+        suggestions = standardized_metadata.get("_Suggestions") or []
         active_profile = get_profile(self.app_dropdown.currentText())
 
         missing_fields = standardized_metadata.get("_MissingFields") or []
@@ -840,6 +969,13 @@ class MetadataViewer(QWidget):
                 else:
                     self.recommended_metadata_display.append(f"{display_key}:  {value}")
 
+        if suggestions:
+            self.recommended_metadata_display.append("")
+            self.recommended_metadata_display.append(f"<b>{tr('suggestions_title')}</b>")
+            for sug in suggestions:
+                self.recommended_metadata_display.append(self._format_suggestion(sug))
+            self._reset_text_format(self.recommended_metadata_display)
+
         # ── Tab 3: Curation ───────────────────────────────────────────────────
         self.curation_display.clear()
         self.curation_display.setAcceptRichText(True)
@@ -857,6 +993,12 @@ class MetadataViewer(QWidget):
             "LOSSY_TIFF":        "#c0392b",
             "CORRUPT":           "#e74c3c",
             "NO_CRS_FOUND":      "#e67e22",
+            "INCOMPLETE_DUMP":   "#e74c3c",
+            "UNDOCUMENTED_VARIABLES": "#e67e22",
+            "RESTART_RECORDS":   "#8e44ad",
+            "BIDS_TEMPLATE_METADATA":  "#c0392b",
+            "BIDS_DATASET_INCOMPLETE": "#e67e22",
+            "NIFTI_NO_SFORM":          "#8e44ad",
         }
         flag_parts = []
         if flags_str and flags_str != "OK":
@@ -890,6 +1032,11 @@ class MetadataViewer(QWidget):
                 f"<b>{tr('curation_reference_label')}</b> <a href='{ref.get('URL','')}' style='color:#2980b9;'>"
                 f"{ref.get('URL','')}</a></p>"
             )
+
+        if suggestions:
+            html += f"<h4 style='margin-bottom:2px;'>{tr('suggestions_title')}</h4><ul>"
+            html += "".join(f"<li>{self._format_suggestion(s)}</li>" for s in suggestions)
+            html += "</ul>"
 
         self.curation_display.setHtml(html)
 
@@ -1187,6 +1334,134 @@ class MetadataViewer(QWidget):
 
         dialog.setLayout(dialog_layout)
         dialog.exec_()
+
+    # === Dataset manifest (MANIFEST.sha256) ===
+    def verify_manifest(self):
+        start_dir = os.path.dirname(self.current_display_file_path) if self.current_display_file_path else ""
+        manifest_path, _ = QFileDialog.getOpenFileName(
+            self, tr("dialog_select_manifest"), start_dir, "Manifest (*.sha256 *.txt);;All files (*)"
+        )
+        if not manifest_path:
+            return
+        try:
+            entries, bad_lines = parse_manifest(manifest_path)
+        except OSError as e:
+            QMessageBox.critical(self, tr("msg_error_title"), tr("msg_manifest_unreadable", error=str(e)))
+            return
+        if not entries:
+            QMessageBox.information(self, tr("msg_manifest_empty_title"), tr("msg_manifest_empty_text"))
+            return
+
+        self._manifest_context = {
+            "folder": os.path.dirname(manifest_path),
+            "name": os.path.basename(manifest_path),
+            "entries": entries,
+            "bad_lines": bad_lines,
+        }
+        self._start_manifest_worker("coverage")
+
+    def _start_manifest_worker(self, mode):
+        ctx = self._manifest_context
+        self.manifest_progress = QProgressDialog(self)
+        self.manifest_progress.setWindowTitle(tr("progress_manifest_title"))
+        self.manifest_progress.setMinimumDuration(0)
+        if mode == "coverage":
+            self.manifest_progress.setLabelText(tr("progress_manifest_scanning"))
+            self.manifest_progress.setRange(0, 0)     # busy indicator: total unknown
+            self.manifest_progress.setCancelButton(None)
+        else:
+            self.manifest_progress.setCancelButtonText(tr("progress_cancel"))
+            self.manifest_progress.setRange(0, 1000)
+            self.manifest_progress.setValue(0)
+
+        self.manifest_worker = ManifestVerifyWorker(ctx["folder"], ctx["entries"], ctx["name"], mode)
+        self.manifest_worker.progress.connect(self.on_manifest_progress)
+        self.manifest_worker.done.connect(lambda out, m=mode: self.on_manifest_done(m, out))
+        # cancel() only raises a flag: the worker stops between chunks and
+        # still returns the partial results, unlike terminate().
+        self.manifest_progress.canceled.connect(self.manifest_worker.cancel)
+        self.manifest_worker.start()
+
+    def on_manifest_progress(self, files_done, files_total, rel_path, bytes_done, bytes_total):
+        if self.manifest_progress is None:
+            return
+        if rel_path:
+            self.manifest_progress.setLabelText(tr(
+                "progress_manifest_hashing", filename=rel_path, current=files_done + 1, total=files_total,
+                done=format_bytes(bytes_done), size=format_bytes(bytes_total),
+            ))
+        self.manifest_progress.setValue(int(1000 * bytes_done / bytes_total) if bytes_total else 0)
+
+    def on_manifest_done(self, mode, out):
+        if self.manifest_progress is not None:
+            self.manifest_progress.canceled.disconnect()
+            self.manifest_progress.close()
+            self.manifest_progress = None
+        if out.get("error"):
+            QMessageBox.critical(self, tr("msg_error_title"), tr("manifest_error", error=out["error"]))
+            return
+
+        ctx = self._manifest_context
+        cov, verify = out["coverage"], out["verify"]
+        limit = 200
+
+        def listing(title_key, items):
+            if not items:
+                return []
+            lines = ["", tr(title_key)] + [f"  {p}" for p in items[:limit]]
+            if len(items) > limit:
+                lines.append("  " + tr("manifest_more", count=len(items) - limit))
+            return lines
+
+        lines = [tr("manifest_coverage_summary", listed=cov["listed"], on_disk=cov["on_disk"],
+                    unlisted=len(cov["unlisted"]), missing=len(cov["missing"]))]
+        if ctx["bad_lines"]:
+            lines.append(tr("manifest_bad_lines", count=len(ctx["bad_lines"]), line=ctx["bad_lines"][0][0]))
+        lines += listing("manifest_section_unlisted", cov["unlisted"])
+        lines += listing("manifest_section_missing", cov["missing"])
+
+        offer_verify = verify is None
+        if verify is not None:
+            counts = Counter(verify["status"].values())
+            lines += ["", tr("manifest_checksum_summary", ok=counts.get("OK", 0), modified=counts.get("MODIFIED", 0),
+                             missing=counts.get("MISSING", 0), unreadable=counts.get("UNREADABLE", 0),
+                             unsafe=counts.get("UNSAFE_PATH", 0))]
+            if verify["cancelled"]:
+                lines.append(tr("manifest_cancelled", done=len(verify["status"]), total=len(ctx["entries"])))
+            problems = sorted(p for p, s in verify["status"].items() if s != "OK")
+            if problems:
+                lines += ["", tr("manifest_section_problems")]
+                lines += [f"  [{verify['status'][p]}] {p}" for p in problems[:limit]]
+                if len(problems) > limit:
+                    lines.append("  " + tr("manifest_more", count=len(problems) - limit))
+            elif not verify["cancelled"]:
+                lines += ["", tr("manifest_all_ok")]
+        else:
+            lines += ["", tr("manifest_checksum_hint", size=format_bytes(out["bytes_total"]))]
+
+        title = tr("dialog_title_manifest_coverage" if offer_verify else "dialog_title_manifest_result")
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setMinimumSize(640, 440)
+        dialog_layout = QVBoxLayout()
+        display = QTextEdit()
+        display.setReadOnly(True)
+        display.setPlainText("\n".join(lines))
+        dialog_layout.addWidget(display)
+
+        buttons = QHBoxLayout()
+        if offer_verify:
+            verify_btn = QPushButton(tr("btn_manifest_verify_checksums", size=format_bytes(out["bytes_total"])))
+            verify_btn.clicked.connect(lambda: dialog.done(2))
+            buttons.addWidget(verify_btn)
+        close_btn = QPushButton(tr("btn_close"))
+        close_btn.clicked.connect(dialog.reject)
+        buttons.addWidget(close_btn)
+        dialog_layout.addLayout(buttons)
+        dialog.setLayout(dialog_layout)
+
+        if dialog.exec_() == 2:
+            self._start_manifest_worker("full")
 
     def show_batch_compliance_summary(self):
         """

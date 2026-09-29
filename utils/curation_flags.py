@@ -4,15 +4,25 @@
 # and Inspect_LAS_Script.R.
 # Flags: DUPLICATE (MD5), CORRUPT (parser error), HAS_GPS_DATA (privacy risk),
 #        DIMENSION_OUTLIER (deviates from dataset mode), LOSSY_TIFF (JPEG-in-TIFF),
-#        NO_CRS_FOUND (georeferenced context reports no embedded CRS).
+#        NO_CRS_FOUND (georeferenced context reports no embedded CRS),
+#        INCOMPLETE_DUMP / UNDOCUMENTED_VARIABLES / RESTART_RECORDS (simulation output),
+#        BIDS_TEMPLATE_METADATA / BIDS_DATASET_INCOMPLETE / NIFTI_NO_SFORM (neuroimaging/BIDS).
 
 import hashlib
+import os
 from collections import Counter
+
+# Files above this size are not hashed here: this runs on the UI thread for a
+# single file, and simulation cubes reach several GB each (minutes of reading).
+# Whole-file fixity for such data belongs to the dataset's own manifest.
+MAX_MD5_BYTES = 1 << 30
 
 
 def _compute_md5(file_path):
     h = hashlib.md5()
     try:
+        if os.path.getsize(file_path) > MAX_MD5_BYTES:
+            return None
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
@@ -116,6 +126,22 @@ def compute_curation_flags(results):
         # embedded coordinate system; common for LAS/LAZ specifically
         if _lacks_crs(meta):
             flags.append("NO_CRS_FOUND")
+
+        # Simulation output (PPMstar): raw cube blocks are headerless, so a
+        # dump missing sibling files or its variables.json can't be used as-is.
+        if meta.get("DumpComplete") == "no":
+            flags.append("INCOMPLETE_DUMP")
+        if meta.get("VariablesDocumented") == "no":
+            flags.append("UNDOCUMENTED_VARIABLES")
+        if (meta.get("DuplicateDumpRecords") or 0) > 0:
+            flags.append("RESTART_RECORDS")
+
+        # Standards-based suggestions (BIDS / NIfTI / OME-NGFF) may raise a
+        # curation flag of their own, e.g. BIDS_TEMPLATE_METADATA.
+        for sug in meta.get("_Suggestions") or []:
+            flag = sug.get("Flag") if isinstance(sug, dict) else None
+            if flag and flag not in flags:
+                flags.append(flag)
 
         flags_by_path[file_path] = flags
 

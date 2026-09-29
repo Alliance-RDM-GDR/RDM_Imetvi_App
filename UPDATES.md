@@ -6,6 +6,159 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-09-29 — MRI (NIfTI/BIDS) and light-sheet (OME-Zarr) support
+
+Driven by FRDR deposit 1828 (mouse TBI: 10 animals x 3 MRI sessions in BIDS,
+plus 24 light-sheet OME-Zarr volumes packed in 3-18 GB `.tar` files). None of
+these formats could be opened before.
+
+- New formats **NIfTI** (`.nii`, `.nii.gz`) and **OME-Zarr** (`.zarr` folder or
+  uncompressed BIDS `.tar`, read in place), with contexts *Neuroimaging (BIDS)*
+  and *Microscopy (OME-Zarr)*, profiles with units, standards entries and
+  required-fields lists.
+- **Standards suggestions** (BIDS 1.9.0, NIfTI-1, ARRIVE 2.0, OME-NGFF, REMBI)
+  in the Recommended and Curation tabs, EN/FR: license/authors/DOI missing,
+  template text, unresolved Bruker placeholders (`VisuCoilReceiveName`...),
+  missing required sidecar fields, animal descriptors absent from
+  `participants.tsv`, no sform, Biosample/Specimen not recorded.
+- New curation flags `BIDS_TEMPLATE_METADATA`, `BIDS_DATASET_INCOMPLETE`,
+  `NIFTI_NO_SFORM`.
+- *Load Folder* recurses into a BIDS dataset root; new *Load OME-Zarr Folder*
+  button; `.nii.gz` sidecar export no longer risks colliding with the BIDS JSON.
+- Added `nibabel` to `requirements.txt`. 24 new tests (266 total).
+- New files: `utils/bids.py` (compound extensions, BIDS entities/sidecar
+  inheritance, placeholder detection, standards suggestions),
+  `metadata_parsers/nifti_parser.py`, `metadata_parsers/omezarr_parser.py`,
+  `standardizers/nifti_neuroimaging_standardizer.py`,
+  `standardizers/omezarr_microscopy_standardizer.py`,
+  `metadata_profiles/nifti_bids_profile.py`,
+  `metadata_profiles/omezarr_microscopy_profile.py`,
+  `tests/test_nifti_bids.py`, `tests/test_omezarr_parser.py`.
+- Checked on the real deposit: 120 NIfTI + 24 tars parsed with no errors.
+  Findings for the depositor: all MRI sidecars carry unresolved Bruker
+  placeholders and no license/authors; `participants.tsv` has only
+  `participant_id`; every tar ships SPIMprep's template
+  `dataset_description.json`; LD17/LD18 `gfap_AAV` lack NA and magnification;
+  Z pixel size differs between tars (3.0, 4.0, 3.342 µm); the sidecar names
+  the instrument "Ultramicroscope Expert" while the device key is `Blaze`.
+- Known limits: loading a multi-GB tar from *Load File* takes ~15 s on the UI
+  thread; the atlas/result CSVs are not images and are not covered; no
+  write-back for these formats.
+
+---
+
+## 2026-09-28 — Verify a dataset against its MANIFEST.sha256
+
+Repositories such as FRDR ask depositors for a `sha256sum`-format manifest,
+but the app could only re-check its own MD5 `checksums.json`. Found while
+curating an 878 GB / 25 595-file release whose manifest omitted two files.
+
+- New sidebar button **Verify Manifest** (Integrity group; always enabled,
+  since it works on a folder rather than on loaded files). Pick the
+  manifest; the app runs two stages:
+  1. **Coverage** (names only, a few seconds for 25 k files): files on disk
+     not in the manifest, and files in the manifest not on disk. The
+     manifest itself is ignored. The dialog offers "Verify Checksums (N GiB)".
+  2. **Checksums** (on request): streaming SHA-256 in a `QThread` with a
+     `QProgressDialog` (percent of bytes, current file) and a Cancel button
+     that stops between chunks and still reports what was checked.
+     Result classes: `OK`, `MODIFIED`, `MISSING`, `UNREADABLE`,
+     `UNSAFE_PATH` (absolute or `..` paths are never opened).
+- Parsing accepts CRLF, the `*` binary marker, `./` prefixes and upper-case
+  hex; unparseable lines (including sha256sum's backslash-escaped ones) and
+  duplicate paths are counted and reported, not fatal.
+- Lists in the dialog are capped at 200 entries per section.
+- On the real FRDR 1777 release the coverage stage reports exactly
+  `.Rhistory` and `O28/prfs/frombqavs/Oshell25mix-BQav0841.rprof` as
+  unlisted, 0 missing, in about 4 s. The full hash of that release
+  (878 GiB) was not run and is not part of the tests.
+- New files: `utils/manifest.py` (Qt-free), `tests/test_manifest.py`.
+  `ManifestVerifyWorker` in `main.py`; 23 EN/FR strings.
+- Tests: 242 (was 219). One test reads the real release's manifest and file
+  names only and is skipped when that folder is not present.
+
+---
+
+## 2026-09-28 — FITS: all HDUs, more header keys, WCS validity check
+
+The FITS parser read 19 fixed keys from the primary header only, so
+multi-extension files (empty primary, image in an extension), tables and
+compressed images were effectively invisible.
+
+- **HDU inventory** for every HDU, from header cards only (no pixel or
+  table data is read): type (image / binary table / ASCII table /
+  compressed image), name, shape and dtype (unsigned types recognised via
+  BZERO), or table row count and column names/formats/units (first 50
+  columns listed, full count kept). Compression type for compressed images.
+- **Science-extension fallback:** when the primary HDU holds no image,
+  `BITPIX`, `NAXIS1/2` and any of the original keys missing from the
+  primary (WCS, `BUNIT`…) come from the first 2-D image HDU, so
+  `DimensionX/Y` and `BitsPerPixel` no longer report an empty primary's
+  values. Primary-header values always win when present.
+- **New keys:** AUTHOR, ORIGIN, CREATOR, DATE, TIMESYS, MJD-OBS, DATE-END,
+  OBSERVER, PROPOSID, BUNIT, BSCALE/BZERO, CD and PC matrices, CUNITn,
+  LONPOLE/LATPOLE (LATPOL accepted), plus HISTORY and COMMENT card counts
+  (counted, not stored).
+- **WCS check** with `astropy.wcs.WCS`, guarded so a malformed WCS never
+  aborts parsing: reports whether a celestial WCS is valid and the pixel
+  scale in arcsec/pixel (`WCS_Valid`, `WCS_PixelScaleX/YArcsec`).
+- Standardized output: the 20 existing keys are unchanged; new keys are
+  emitted only when the file has them. `HDUCount` was added to the FITS
+  required fields so a partly unreadable file is flagged. Profile labels
+  and the "Astronomy" standards entry updated (coverage and limits).
+- Known limit: only the first 2-D image HDU feeds the summary fields, so
+  per-detector WCS in a multi-image mosaic is not itemised. Table-only
+  FITS files are still flagged for missing `DimensionX/Y`.
+- Tests: 219 (was 207), synthetic multi-extension, table, compressed,
+  unsigned, WCS and corrupt-file cases in `tests/test_fits_parser.py`.
+
+---
+
+## 2026-09-28 — PPMstar simulation output support (astrophysics dataset FRDR 1777)
+
+Prompted by curating a stellar-hydrodynamics release (7 PPMstar runs,
+878 GB, 25 595 files). The app's only astronomy path was FITS, and the
+release contains no FITS: none of its extensions (`.rprof`, `.hstry`,
+`.aaa`–`.bbb`, `.include`, `.F`) could even be opened.
+
+- New format **PPMstar** / context **Astrophysical Simulation**. One parser
+  recognises each file kind by extension and location:
+  - `.rprof` — radial profiles of a dump. ASCII despite the dataset README
+    calling it binary. Extracts the run banner (dump, cycle, problem time,
+    dt, Courant, ranks/threads, grid), the ~33 profile tables (names, row
+    counts, radial range), the free-text run description and the code's
+    integer/real parameter blocks (heating/burning switches, boundary
+    radii, luminosity). `frombqavs/*BQav*.rprof` is handled as its own
+    single-table variant.
+  - `.hstry` — dump range, simulated time span, dt range, max Mach number,
+    wall-clock span, and **repeated dump records**: every run was
+    restarted from earlier checkpoints, so some dump numbers appear 2–3
+    times with different times.
+  - Raw float32 cube blocks (`.aaa`… in `moms/`) — headerless, so geometry
+    is inferred from file size (10 variables × (n+2)³), sibling files give
+    the sub-cube layout and completeness, and the run's `variables.json`
+    (searched up to 4 folders up) supplies variable names/units and the
+    dump time. Cube data is never read; files are up to 2.3 GB.
+    The same extensions under `prfs/` are reported as opaque internal
+    companion arrays.
+  - `.include` (initial 1-D stratification: MESA model, radial table,
+    base-state constants) and `-flags.F` (setup file, opacity model).
+- New curation flags `INCOMPLETE_DUMP`, `UNDOCUMENTED_VARIABLES`,
+  `RESTART_RECORDS`.
+- `utils/curation_flags.py` no longer MD5-hashes files above 1 GiB
+  (`MAX_MD5_BYTES`): a single-file load runs on the UI thread and would
+  have read up to 2.3 GB per cube. Fixity for such files belongs to the
+  dataset's `MANIFEST.sha256` (see "Verify Manifest", above).
+- New files: `metadata_parsers/ppmstar_parser.py`,
+  `standardizers/ppmstar_simulation_standardizer.py`,
+  `metadata_profiles/ppmstar_simulation_profile.py`,
+  `tests/test_ppmstar_parser.py`. Registered in `main.py`,
+  `profile_registry.py`, `standards_registry.py`,
+  `required_fields_registry.py`.
+- Tests: 207 (was 189).
+
+---
+
 ## 2026-09-15 — Sidebar readability: contextual LiDAR section, tooltips, readable WKT
 
 Three small UI readability fixes, prompted by using the app with a real

@@ -17,7 +17,10 @@ STRINGS_FR = {
     "btn_load_file": "Charger un fichier",
     "tooltip_load_file": "Ouvre un seul fichier image et affiche ses métadonnées.",
     "btn_load_folder": "Charger un dossier",
-    "tooltip_load_folder": "Charge tous les fichiers pris en charge d'un dossier pour un traitement par lot.",
+    "tooltip_load_folder": "Charge tous les fichiers pris en charge d'un dossier pour un traitement par lot. La racine d'un jeu de données BIDS est parcourue récursivement.",
+    "btn_load_zarr": "Charger un dossier OME-Zarr",
+    "tooltip_load_zarr": "Ouvre une image OME-Zarr (dossier .zarr) et affiche ses métadonnées. Les archives .tar BIDS non compressées s'ouvrent avec Charger un fichier.",
+    "dialog_select_zarr": "Sélectionner un dossier OME-Zarr",
 
     # --- Sidebar: Export ---
     "group_export": "Exporter",
@@ -43,6 +46,8 @@ STRINGS_FR = {
     "tooltip_save_checksums": "Écrit checksums.json pour le dossier des fichiers chargés, pour de futures vérifications d'intégrité.",
     "btn_verify_integrity": "Vérifier l'intégrité",
     "tooltip_verify_integrity": "Compare les sommes de contrôle actuelles à un fichier checksums.json enregistré.",
+    "btn_verify_manifest": "Vérifier le manifeste",
+    "tooltip_verify_manifest": "Vérifie un jeu de données à l'aide de son MANIFEST.sha256 : compare sa liste de fichiers au dossier, puis vérifie au besoin chaque somme de contrôle SHA-256.",
 
     # --- Sidebar: View ---
     "group_view": "Affichage",
@@ -115,6 +120,29 @@ STRINGS_FR = {
     "msg_no_checksums_text": "Aucun fichier checksums.json trouvé dans ce dossier.\nUtilisez d'abord « Enregistrer les sommes de contrôle » pour créer une référence.",
     "dialog_title_integrity_result": "Résultat de la vérification d'intégrité",
 
+    # --- Dataset manifest (MANIFEST.sha256) ---
+    "dialog_select_manifest": "Sélectionner MANIFEST.sha256",
+    "msg_manifest_unreadable": "Impossible de lire le manifeste : {error}",
+    "msg_manifest_empty_title": "Manifeste vide",
+    "msg_manifest_empty_text": "Aucune ligne valide « <sha256>  <chemin> » n'a été trouvée dans ce fichier.",
+    "progress_manifest_title": "Vérification du manifeste",
+    "progress_manifest_scanning": "Comparaison du manifeste avec le dossier...",
+    "progress_manifest_hashing": "Calcul de l'empreinte de {filename} ({current}/{total})\n{done} sur {size}",
+    "dialog_title_manifest_coverage": "Couverture du manifeste",
+    "dialog_title_manifest_result": "Résultat de la vérification du manifeste",
+    "btn_manifest_verify_checksums": "Vérifier les sommes de contrôle ({size})",
+    "manifest_coverage_summary": "Listés dans le manifeste : {listed}   Sur disque : {on_disk}   Non listés : {unlisted}   Manquants : {missing}",
+    "manifest_bad_lines": "{count} ligne(s) du manifeste illisible(s) (première : ligne {line}).",
+    "manifest_checksum_hint": "Les sommes de contrôle n'ont pas été vérifiées. La vérification lit {size} et peut être longue; elle peut être annulée.",
+    "manifest_checksum_summary": "OK : {ok}   Modifiés : {modified}   Manquants : {missing}   Illisibles : {unreadable}   Chemin non sûr : {unsafe}",
+    "manifest_cancelled": "Annulé : seulement {done} fichier(s) sur {total} ont été vérifiés.",
+    "manifest_all_ok": "Chaque fichier vérifié correspond à son SHA-256 enregistré.",
+    "manifest_section_unlisted": "Sur disque mais non listés dans le manifeste :",
+    "manifest_section_missing": "Listés dans le manifeste mais absents du disque :",
+    "manifest_section_problems": "Problèmes de somme de contrôle :",
+    "manifest_more": "... et {count} de plus",
+    "manifest_error": "Échec de la vérification du manifeste : {error}",
+
     # --- Sidecar ---
     "dialog_title_save_sidecar": "Enregistrer le fichier JSON associé",
     "confirm_overwrite_sidecar": "Un fichier associé existe déjà :\n{path}\n\nL'écraser ?",
@@ -168,6 +196,7 @@ STRINGS_FR = {
 
     # --- Recommended Fields tab: missing required fields ---
     "missing_fields_label": "Champs requis manquants :",
+    "suggestions_title": "Suggestions selon les normes",
 
     # --- Curation tab rendering ---
     "curation_summary_title": "Résumé de curation — {filename}",

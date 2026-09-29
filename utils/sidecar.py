@@ -8,11 +8,18 @@
 import json
 import os
 
+from utils.bids import COMPOUND_EXTENSIONS, get_extension, strip_extension
+
 from utils.serialization import make_json_serializable
 
 
 def sidecar_path_for(image_path):
     """Returns the expected sidecar path for a given image file."""
+    ext = get_extension(image_path)
+    if ext in COMPOUND_EXTENSIONS:
+        # .nii.gz / .ome.zarr: the plain "<stem>.json" is the dataset's own
+        # BIDS sidecar and must never be overwritten by the standardized record.
+        return strip_extension(image_path) + ".imetvi.json"
     base, _ = os.path.splitext(image_path)
     return base + ".json"
 

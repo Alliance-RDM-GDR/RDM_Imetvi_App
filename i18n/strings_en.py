@@ -17,7 +17,10 @@ STRINGS_EN = {
     "btn_load_file": "Load File",
     "tooltip_load_file": "Open a single image file and display its metadata.",
     "btn_load_folder": "Load Folder",
-    "tooltip_load_folder": "Load every supported file in a folder for batch processing.",
+    "tooltip_load_folder": "Load every supported file in a folder for batch processing. A BIDS dataset root is searched recursively.",
+    "btn_load_zarr": "Load OME-Zarr Folder",
+    "tooltip_load_zarr": "Open an OME-Zarr image (a .zarr folder) and display its metadata. Uncompressed BIDS .tar archives open with Load File.",
+    "dialog_select_zarr": "Select an OME-Zarr folder",
 
     # --- Sidebar: Export ---
     "group_export": "Export",
@@ -43,6 +46,8 @@ STRINGS_EN = {
     "tooltip_save_checksums": "Write checksums.json for the loaded files' folder, for later integrity checks.",
     "btn_verify_integrity": "Verify Integrity",
     "tooltip_verify_integrity": "Compare current file checksums against a saved checksums.json.",
+    "btn_verify_manifest": "Verify Manifest",
+    "tooltip_verify_manifest": "Check a dataset against its MANIFEST.sha256: compare its file list with the folder, then optionally verify every SHA-256 checksum.",
 
     # --- Sidebar: View ---
     "group_view": "View",
@@ -114,6 +119,29 @@ STRINGS_EN = {
     "msg_no_checksums_text": "No checksums.json found in this folder.\nUse 'Save Checksums' first to create a baseline.",
     "dialog_title_integrity_result": "Integrity Verification Result",
 
+    # --- Dataset manifest (MANIFEST.sha256) ---
+    "dialog_select_manifest": "Select MANIFEST.sha256",
+    "msg_manifest_unreadable": "Could not read the manifest: {error}",
+    "msg_manifest_empty_title": "Empty Manifest",
+    "msg_manifest_empty_text": "No valid '<sha256>  <path>' lines were found in this file.",
+    "progress_manifest_title": "Manifest Verification",
+    "progress_manifest_scanning": "Comparing the manifest with the folder...",
+    "progress_manifest_hashing": "Hashing {filename} ({current}/{total})\n{done} of {size}",
+    "dialog_title_manifest_coverage": "Manifest Coverage",
+    "dialog_title_manifest_result": "Manifest Verification Result",
+    "btn_manifest_verify_checksums": "Verify Checksums ({size})",
+    "manifest_coverage_summary": "Listed in manifest: {listed}   On disk: {on_disk}   Not listed: {unlisted}   Missing: {missing}",
+    "manifest_bad_lines": "{count} manifest line(s) could not be read (first: line {line}).",
+    "manifest_checksum_hint": "Checksums have not been verified. Verifying reads {size} and may take a long time; it can be cancelled.",
+    "manifest_checksum_summary": "OK: {ok}   Modified: {modified}   Missing: {missing}   Unreadable: {unreadable}   Unsafe path: {unsafe}",
+    "manifest_cancelled": "Cancelled: only {done} of {total} file(s) were checked.",
+    "manifest_all_ok": "Every checked file matches its recorded SHA-256.",
+    "manifest_section_unlisted": "On disk but not listed in the manifest:",
+    "manifest_section_missing": "Listed in the manifest but not on disk:",
+    "manifest_section_problems": "Checksum problems:",
+    "manifest_more": "... and {count} more",
+    "manifest_error": "Manifest verification failed: {error}",
+
     # --- Sidecar ---
     "dialog_title_save_sidecar": "Save Sidecar JSON",
     "confirm_overwrite_sidecar": "A sidecar file already exists:\n{path}\n\nOverwrite it?",
@@ -166,6 +194,7 @@ STRINGS_EN = {
 
     # --- Recommended Fields tab: missing required fields ---
     "missing_fields_label": "Missing required fields:",
+    "suggestions_title": "Standards suggestions",
 
     # --- Curation tab rendering ---
     "curation_summary_title": "Curation Summary — {filename}",

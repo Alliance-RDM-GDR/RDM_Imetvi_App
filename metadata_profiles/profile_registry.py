@@ -10,9 +10,12 @@ from metadata_profiles.geotiff_remote_sensing_profile import GEOTIFF_REMOTE_SENS
 from metadata_profiles.jpg_general_profile import JPG_GENERAL_PROFILE
 from metadata_profiles.dicom_medical_profile import DICOM_MEDICAL_PROFILE
 from metadata_profiles.fits_astronomy_profile import FITS_ASTRONOMY_PROFILE
+from metadata_profiles.ppmstar_simulation_profile import PPMSTAR_SIMULATION_PROFILE
 from metadata_profiles.lif_microscopy_profile import LIF_MICROSCOPY_PROFILE
 from metadata_profiles.netcdf_remote_sensing_profile import NETCDF_REMOTE_SENSING_PROFILE
 from metadata_profiles.las_lidar_profile import LAS_LIDAR_PROFILE
+from metadata_profiles.nifti_bids_profile import NIFTI_BIDS_PROFILE
+from metadata_profiles.omezarr_microscopy_profile import OMEZARR_MICROSCOPY_PROFILE
 
 # HDF5 and PNG profiles are compact enough to define inline here.
 HDF5_GENERAL_PROFILE = {
@@ -61,7 +64,10 @@ PROFILE_REGISTRY = {
     "Remote Sensing (LiDAR)": LAS_LIDAR_PROFILE,
     "General / EXIF":       JPG_GENERAL_PROFILE,
     "Medical Imaging":      DICOM_MEDICAL_PROFILE,
+    "Neuroimaging (BIDS)":  NIFTI_BIDS_PROFILE,
+    "Microscopy (OME-Zarr)": OMEZARR_MICROSCOPY_PROFILE,
     "Astronomy":            FITS_ASTRONOMY_PROFILE,
+    "Astrophysical Simulation": PPMSTAR_SIMULATION_PROFILE,
     "General / HDF5":       HDF5_GENERAL_PROFILE,
 }
 

@@ -1,0 +1,41 @@
+# metadata_profiles/omezarr_microscopy_profile.py
+#
+# Display labels/units for the "Microscopy (OME-Zarr)" context (OME-NGFF image
+# inside a BIDS-Microscopy dataset). Pixel sizes are normalized to µm.
+
+OMEZARR_MICROSCOPY_PROFILE = {
+    "ImageName": {"label": "Image Name", "unit": None},
+    "BIDSSubject": {"label": "Subject (sub)", "unit": None},
+    "BIDSSample": {"label": "Sample", "unit": None},
+    "Modality": {"label": "Imaging Modality", "unit": None},
+    "NGFFVersion": {"label": "OME-NGFF Version", "unit": None},
+    "DimensionX": {"label": "Image Width", "unit": "pixels"},
+    "DimensionY": {"label": "Image Height", "unit": "pixels"},
+    "DimensionZ": {"label": "Z Depth", "unit": "planes"},
+    "NumChannels": {"label": "Number of Channels", "unit": None},
+    "NumTimepoints": {"label": "Timepoints", "unit": None},
+    "PixelSizeX": {"label": "Pixel Size X", "unit": "µm"},
+    "PixelSizeY": {"label": "Pixel Size Y", "unit": "µm"},
+    "PixelSizeZ": {"label": "Pixel Size Z", "unit": "µm"},
+    "PixelType": {"label": "Pixel Type", "unit": None},
+    "ChunkShape": {"label": "Chunk Shape", "unit": None},
+    "Compression": {"label": "Compression", "unit": None},
+    "PyramidLevels": {"label": "Pyramid Levels Stored", "unit": None},
+    "DownsampleFactorXY": {"label": "Downsampling vs. Acquisition (XY)", "unit": "×"},
+    "Channels": {"label": "Channels", "unit": None},
+    "Magnification": {"label": "Objective Magnification", "unit": "×"},
+    "NA": {"label": "Numerical Aperture", "unit": None},
+    "Immersion": {"label": "Immersion Medium", "unit": None},
+    "InstrumentModel": {"label": "Microscope Model", "unit": None},
+    "SoftwareVersions": {"label": "Acquisition Software", "unit": None},
+    "AcquisitionMode": {"label": "Acquisition Mode", "unit": None},
+    "SidecarPixelSize": {"label": "Acquired Pixel Size (sidecar, X, Y, Z)", "unit": None},
+    "ExcitationWavelength": {"label": "Excitation Wavelength", "unit": "nm"},
+    "EmissionWavelength": {"label": "Emission Wavelength", "unit": "nm"},
+    "ProcessingSoftware": {"label": "Conversion / Processing Software", "unit": None},
+    "DatasetName": {"label": "BIDS Dataset Name", "unit": None},
+    "DatasetLicense": {"label": "Dataset License", "unit": None},
+    "StoredChunkFiles": {"label": "Stored Chunk Files", "unit": None},
+    "StoredSizeMB": {"label": "Stored Image Size", "unit": "MB"},
+    "_Suggestions": {"label": "Standards Suggestions", "unit": None},
+}

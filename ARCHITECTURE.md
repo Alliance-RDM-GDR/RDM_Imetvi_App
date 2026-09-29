@@ -186,6 +186,8 @@ Loading a file:
 | LIF | `.lif` | Microscopy (Leica) | `lif_parser.py` | `lif_microscopy_standardizer.py` |
 | NetCDF | `.nc .nc4` | Remote Sensing (NetCDF) | `netcdf_parser.py` | `netcdf_remote_sensing_standardizer.py` |
 | LAS | `.las .laz` | Remote Sensing (LiDAR) | `las_parser.py` | `las_lidar_standardizer.py` |
+| NIfTI | `.nii .nii.gz` | Neuroimaging (BIDS) | `nifti_parser.py` | `nifti_neuroimaging_standardizer.py` |
+| OME-Zarr | `.zarr .ome.zarr .tar` | Microscopy (OME-Zarr) | `omezarr_parser.py` | `omezarr_microscopy_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -229,6 +231,7 @@ utils/
     metadata_writer.py         Writes EXIF/IPTC/XMP (JPEG) and ImageDescription JSON (TIFF) back to file
     sidecar.py                 Writes/reads a standardized-metadata .json beside the source image
     integrity.py                MD5 + checksums.json persistence and cross-session verification
+    manifest.py                 Qt-free MANIFEST.sha256 parsing, name-only coverage check, streaming cancellable SHA-256 verify
     thumbnail.py                Qt-free PNG-bytes thumbnail generation (Pillow) for the preview panel
     wkt_display.py              Indents a CRS WKT string for on-screen display only (via pyproj)
     nested_parser.py           Nested-dict flattening helper
@@ -238,6 +241,43 @@ output/                        Runtime export output (gitignored content)
 templates/                     Reserved for D1 (metadata templates) — currently empty
 UPDATES.md                     Chronological changelog (human-readable)
 ```
+
+---
+
+## BIDS neuroimaging and OME-Zarr (`utils/bids.py`)
+
+Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
+
+- **Compound extensions.** `utils.bids.get_extension()` treats `.nii.gz` and
+  `.ome.zarr` as one unit; `main.py` uses it for format lookup, the
+  auto-select on load and the folder filter (plain `os.path.splitext` sees
+  only `.gz`).
+- **NIfTI** (`nifti_parser.py`): header only via nibabel (never voxel data),
+  plus the BIDS context around the file: JSON sidecar with BIDS inheritance,
+  `.bval/.bvec`, filename entities, `dataset_description.json`, and
+  `participants.tsv` **column names only** (values can be human demographics).
+  The standardizer reports `MatrixSizeX/Y/Z`, not `DimensionX/Y`, so mixed
+  T2w/DWI/BOLD sessions do not raise false `DIMENSION_OUTLIER` flags.
+- **OME-Zarr** (`omezarr_parser.py`): a small `_Store` reads `.zattrs` /
+  `.zarray` (zarr v2) or `zarr.json` (v3) straight from a `.zarr` folder or an
+  uncompressed `.tar`, without extracting and without a zarr dependency.
+  Chunk files are counted from the index, never opened. Pixel sizes are
+  normalized to µm and compared with the BIDS sidecar (`DownsampleFactorXY`).
+  A single excitation/emission pair on a multi-channel image is withheld
+  (`WavelengthAmbiguous`) instead of being attributed to one channel.
+- **Standards suggestions.** Standardizers attach `_Suggestions`, a list of
+  `{Code, Standard, Message, Message_fr, Flag}` dicts built in
+  `utils/bids.py`. `main.py` renders them in the active language (Recommended
+  and Curation tabs); a suggestion with a `Flag` also raises that curation
+  flag (`curation_flags.py`).
+- **Batch loading.** *Load Folder* on a BIDS root (it holds
+  `dataset_description.json`) searches recursively for the selected format's
+  files; a `*.zarr` folder counts as one image and is never descended into.
+  *Load OME-Zarr Folder* opens a single `.zarr`.
+- **Sidecar export.** `sidecar_path_for()` writes `<stem>.imetvi.json` for
+  `.nii.gz`/`.ome.zarr`, because `<stem>.json` is the dataset's own BIDS
+  sidecar and must not be overwritten.
+- Write-back to these formats is not offered (`is_write_supported` is false).
 
 ---
 
@@ -460,6 +500,18 @@ a `checksums.json` manifest per folder (`Save Checksums`) and diffs a later
 scan against it (`Verify Integrity`), classifying each file as
 `OK` / `MODIFIED` / `MISSING` / `NEW` — independent of the curation layer's
 same-session `DUPLICATE` flag, which only compares files within one batch.
+
+`utils/manifest.py` is the fifth: it checks a folder against a
+repository-style `MANIFEST.sha256` that the depositor, not the app,
+wrote. It is deliberately two stages so the cheap one is always
+available on huge datasets: `check_coverage()` compares names only,
+while `verify_manifest()` streams SHA-256 in 1 MiB chunks, takes
+progress and cancel callbacks, and refuses to open manifest paths that
+are absolute or climb out of the folder (`UNSAFE_PATH`). `main.py`
+wraps it in `ManifestVerifyWorker` (a `QThread`, like
+`FolderLoadWorker`); cancelling sets a flag the worker polls between
+chunks, so a partial result is still returned rather than the thread
+being terminated mid-read.
 
 ---
 
