@@ -59,5 +59,8 @@ AIM_MICROCT_PROFILE = {
     "LowThresholdDensity": {"label": "Lower Threshold (density)", "unit": "mg HA/ccm"},
     "UpperThresholdDensity": {"label": "Upper Threshold (density)", "unit": "mg HA/ccm"},
     "LowThresholdDataValue": {"label": "Lower Threshold (scaled µ value)", "unit": "scaled µ"},
+    "SegmentedVoxels": {"label": "Segmented Object Voxels", "unit": "voxels"},
+    "SegmentedVolume": {"label": "Segmented Object Volume", "unit": "mm³"},
+    "SegmentedFraction": {"label": "Segmented Fraction of Matrix", "unit": "%"},
     "_Suggestions": {"label": "Standards Suggestions", "unit": None},
 }

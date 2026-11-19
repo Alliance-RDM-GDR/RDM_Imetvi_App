@@ -6,6 +6,26 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-19 (later) — AIM segmentation volumes
+
+- Run-length segmentation blocks (`_seg.aim`, type `0x00150001`) are now
+  decoded: new fields *Segmented Object Voxels*, *Volume* (mm³) and *Fraction
+  of Matrix* (%), and the thumbnail shows the mask's middle slice.
+- Layout was reverse-engineered, not taken from a spec: block size, background
+  and foreground bytes, then alternating run lengths where each `0xFF` byte
+  counts 254. Checked on the real deposit: runs sum exactly to the voxel count
+  for all 64 segmentations, and the mask overlays the bright (bone) structures
+  of the parent volume. A block that does not add up is reported as "not
+  decoded", never guessed.
+- The log's "Average data value (approx.)" for a segmentation does not match
+  the decoded foreground (1.87% implied vs 0.98% counted for `ll01`), so it is
+  not used.
+- Deliberately not computed: per-object counts, BV/TV and morphometry. Those
+  are analysis, not metadata.
+- 15 new tests (309 total).
+
+---
+
 ## 2026-11-19 — Scanco micro-CT (AIM) support
 
 Driven by FRDR deposit 1925 (Lost Lagoon 2018 threespine stickleback micro-CT:

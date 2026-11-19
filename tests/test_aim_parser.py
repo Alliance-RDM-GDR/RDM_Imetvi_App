@@ -13,7 +13,8 @@ import pytest
 import utils.curation_flags as curation_flags
 from main import FORMAT_REGISTRY, MetadataViewer, formats_for_extension, get_standardizer
 from metadata_parsers.aim_parser import (
-    _vax_f_to_float, parse_aim_log, parse_aim_metadata, parse_vms_date, read_aim_header,
+    _vax_f_to_float, decode_rle_runs, parse_aim_log, parse_aim_metadata, parse_vms_date,
+    read_aim_header, segmentation_slice,
 )
 from metadata_profiles.profile_registry import get_profile
 from metadata_profiles.required_fields_registry import compute_missing_fields
@@ -83,13 +84,39 @@ def _log(patient="HJ_SB17_LL12_LL01_LL26", segmentation=False):
     return "".join(text).encode("latin-1")
 
 
+def encode_rle(mask):
+    """Reference encoder for a segmentation block: alternating bg/fg runs, bg first."""
+    flat = np.asarray(mask, dtype=bool).ravel()
+    changes = np.flatnonzero(np.diff(flat.astype(np.int8))) + 1
+    bounds = np.concatenate(([0], changes, [flat.size]))
+    runs = list(np.diff(bounds))
+    if flat[0]:
+        runs.insert(0, 0)  # the stream always starts with a background run
+    body = bytearray()
+    for r in runs:
+        r = int(r)
+        while r >= 255:
+            body.append(255)
+            r -= 254
+        body.append(r)
+    block = bytearray(4) + bytes([0, 127]) + body
+    struct.pack_into("<i", block, 0, len(block))
+    return bytes(block)
+
+
+def default_mask(dims=DIMS):
+    mask = np.zeros(dims[::-1], dtype=bool)  # (z, y, x), x fastest
+    mask[1:3, 1:4, 2:5] = True
+    return mask
+
+
 def write_aim(path, version="020", dims=DIMS, type_code=0x00020002, segmentation=False,
-              patient="HJ_SB17_LL12_LL01_LL26", pos=(3, 2, 1)):
+              patient="HJ_SB17_LL12_LL01_LL26", pos=(3, 2, 1), mask=None):
     """Writes a minimal AIM; returns the data offset. Short voxels = running index."""
     log = _log(patient, segmentation)
     n = dims[0] * dims[1] * dims[2]
     if segmentation:
-        data = b"\x01" * (n // 8)  # stands in for the compressed block (smaller than n voxels)
+        data = encode_rle(default_mask(dims) if mask is None else mask)
     else:
         data = (np.arange(n, dtype="<i2") * 7).tobytes()
     if version == "020":
@@ -235,6 +262,63 @@ def test_segmentation_file(tmp_path):
     assert "AIM_SEG_NO_PARENT" not in _codes(d)
 
 
+def test_segmented_volume_is_computed(tmp_path):
+    write_aim(tmp_path / "ll01_seg.aim", type_code=0x00150001, segmentation=True)
+    text, raw, d = _std(tmp_path / "ll01_seg.aim")
+    expected = int(default_mask().sum())  # 2 x 3 x 3 = 18 voxels
+    assert raw["SegmentationDecoded"] is True and raw["SegmentedVoxels"] == expected == 18
+    assert d["SegmentedVoxels"] == 18
+    assert d["SegmentedVolume"] == pytest.approx(18 * 0.02 ** 3)  # mm3
+    assert d["SegmentedFraction"] == pytest.approx(100 * 18 / (6 * 5 * 4))
+    assert "Segmented volume: 18 voxels" in text
+
+
+def test_volume_fields_absent_for_grey_value_volumes(sample):
+    _, raw, d = _std(sample)
+    assert raw["SegmentationDecoded"] is False
+    assert "SegmentedVolume" not in d
+
+
+def test_undecodable_segmentation_is_reported_not_guessed(tmp_path):
+    p = tmp_path / "ll01_seg.aim"
+    write_aim(p, type_code=0x00150001, segmentation=True)
+    off = read_aim_header(str(p))["DataOffset"]
+    blob = bytearray(p.read_bytes())
+    blob[off + 10] ^= 0x7F  # corrupt a run length so the total no longer adds up
+    p.write_bytes(bytes(blob))
+    text, raw, d = _std(p)
+    assert raw["SegmentationDecoded"] is False and "SegmentedVolume" not in d
+    assert "not decoded" in text
+
+
+@pytest.mark.parametrize("fg_run", [0, 1, 253, 254, 255, 256, 508, 509, 1000])
+def test_rle_run_lengths_around_the_escape_boundary(fg_run):
+    flat = np.zeros(2000, dtype=bool)
+    flat[300:300 + fg_run] = True
+    decoded = decode_rle_runs(encode_rle(flat), flat.size)
+    assert decoded is not None
+    runs, bg, fg = decoded
+    assert (bg, fg) == (0, 127) and int(runs.sum()) == flat.size
+    assert int(runs[1::2].sum()) == fg_run
+
+
+def test_rle_rejects_bad_blocks():
+    good = encode_rle(default_mask())
+    n = 6 * 5 * 4
+    assert decode_rle_runs(good, n) is not None
+    assert decode_rle_runs(good, n + 1) is None            # runs do not add up
+    assert decode_rle_runs(good[:-1], n) is None            # size field disagrees
+    assert decode_rle_runs(b"\x03\x00\x00\x00", n) is None  # too short
+    assert decode_rle_runs(good[:-1] + b"\xff", n) is None  # unterminated last run
+
+
+def test_segmentation_slice_matches_the_mask():
+    mask = default_mask()
+    decoded = decode_rle_runs(encode_rle(mask), mask.size)
+    for z in range(DIMS[2]):
+        assert np.array_equal(segmentation_slice(decoded, list(DIMS), z), mask[z])
+
+
 def test_segmentation_without_parent_is_suggested(tmp_path):
     write_aim(tmp_path / "ll09_seg.aim", type_code=0x00150001, segmentation=True)
     _, _, d = _std(tmp_path / "ll09_seg.aim")
@@ -365,10 +449,20 @@ def test_thumbnail_is_the_middle_slice(sample):
     assert png and png[:8] == b"\x89PNG\r\n\x1a\n"
 
 
-def test_no_thumbnail_for_compressed_or_corrupt_volumes(tmp_path):
+def test_segmentation_thumbnail_is_its_mask(tmp_path):
     write_aim(tmp_path / "s_seg.aim", type_code=0x00150001, segmentation=True)
+    png = generate_thumbnail_bytes(str(tmp_path / "s_seg.aim"))
+    assert png and png[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_no_thumbnail_for_undecodable_or_corrupt_volumes(tmp_path):
+    p = tmp_path / "s_seg.aim"
+    write_aim(p, type_code=0x00150001, segmentation=True)
+    blob = bytearray(p.read_bytes())
+    blob[read_aim_header(str(p))["DataOffset"] + 10] ^= 0x7F
+    p.write_bytes(bytes(blob))
     (tmp_path / "bad.aim").write_bytes(b"\x00" * 64)
-    assert generate_thumbnail_bytes(str(tmp_path / "s_seg.aim")) is None
+    assert generate_thumbnail_bytes(str(p)) is None
     assert generate_thumbnail_bytes(str(tmp_path / "bad.aim")) is None
 
 

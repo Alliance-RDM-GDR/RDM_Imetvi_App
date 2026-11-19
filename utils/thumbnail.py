@@ -23,24 +23,31 @@ def _aim_thumbnail_bytes(file_path, size):
     """
     Preview of a Scanco AIM volume: its middle axial slice, windowed to the
     1st-99.5th percentile of the slice. Reads one slice (~0.5 MB) from the
-    volume, never the whole 0.5-2 GB. Returns None for compressed volumes
-    (segmentations), unknown voxel types or any read failure.
+    volume, never the whole 0.5-2 GB. A run-length segmentation is previewed
+    as its mask. Returns None for other compressed volumes, unknown voxel
+    types or any read failure.
     """
     try:
         import numpy as np
         from metadata_parsers.aim_parser import read_aim_header, describe_voxel_type
 
+        from metadata_parsers.aim_parser import read_segmentation_runs, segmentation_slice
+
         hdr = read_aim_header(file_path)
         nx, ny, nz = hdr["Dimensions"]
         _, dtype, bpv, compressed = describe_voxel_type(hdr["TypeCode"], hdr["Dimensions"], hdr["DataBytes"])
-        if dtype is None or compressed or hdr["FileSize"] < hdr["DataOffset"] + hdr["DataBytes"]:
-            return None
-        offset = hdr["DataOffset"] + (nz // 2) * nx * ny * bpv
-        sl = np.fromfile(file_path, dtype=dtype, count=nx * ny, offset=offset).reshape(ny, nx)
-        lo, hi = np.percentile(sl, (1.0, 99.5))
-        if hi <= lo:
-            hi = lo + 1
-        img8 = (np.clip((sl.astype("float64") - lo) / (hi - lo), 0, 1) * 255).astype("uint8")
+        decoded = read_segmentation_runs(file_path, hdr)
+        if decoded is not None:  # segmentation: middle slice of the mask
+            img8 = segmentation_slice(decoded, hdr["Dimensions"], nz // 2).astype("uint8") * 255
+        else:
+            if dtype is None or compressed or hdr["FileSize"] < hdr["DataOffset"] + hdr["DataBytes"]:
+                return None
+            offset = hdr["DataOffset"] + (nz // 2) * nx * ny * bpv
+            sl = np.fromfile(file_path, dtype=dtype, count=nx * ny, offset=offset).reshape(ny, nx)
+            lo, hi = np.percentile(sl, (1.0, 99.5))
+            if hi <= lo:
+                hi = lo + 1
+            img8 = (np.clip((sl.astype("float64") - lo) / (hi - lo), 0, 1) * 255).astype("uint8")
         img = Image.fromarray(img8)
         img.thumbnail(size)
         buf = io.BytesIO()

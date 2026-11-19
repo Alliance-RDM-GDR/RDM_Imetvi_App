@@ -220,6 +220,14 @@ def standardize_aim_microct_metadata(raw_metadata):
             "LowThresholdDataValue": seg.get("LowThresholdDataValue") if seg.get("LowThresholdDataValue") is not None else "",
         })
 
+    if is_seg and raw.get("SegmentationDecoded") and len(dims) > 2 and len(el) > 2:
+        voxels = raw["SegmentedVoxels"]
+        d.update({
+            "SegmentedVoxels": voxels,
+            "SegmentedVolume": float(f"{voxels * el[0] * el[1] * el[2]:.6g}"),
+            "SegmentedFraction": round(100.0 * voxels / (dims[0] * dims[1] * dims[2]), 4),
+        })
+
     if dims:
         d["_Suggestions"] = _suggestions(raw, lg)
     return d

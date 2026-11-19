@@ -274,9 +274,13 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
   segmentations, the filter/threshold chain; the `.txt` beside a volume is a
   dump of that same header and is only cross-checked. The `.hx` Amira script's
   `load -raw` line is checked for target file (exact case), matrix size and
-  header offset. Segmentations (`*_seg.aim`) hold a compressed block that is not
-  decoded. `read_aim_header()` is reused by `utils/thumbnail.py`, which previews
-  the middle axial slice of an uncompressed volume by reading one slice.
+  header offset. Segmentations (`*_seg.aim`) hold a run-length block
+  (`decode_rle_runs()`: alternating background/foreground runs, `0xFF` = 254 and
+  continue); only the foreground size is derived from it, and a block whose runs
+  do not add up to the voxel count is reported as not decoded.
+  `read_aim_header()` is reused by `utils/thumbnail.py`, which previews
+  the middle axial slice of an uncompressed volume by reading one slice (or the
+  mask's middle slice for a segmentation).
   The standardizer reports `MatrixSizeX/Y/Z`, not `DimensionX/Y` (crops of one
   deposit differ in size by design). `.aim` files are MD5-hashed only up to
   64 MiB (`MAX_MD5_BYTES_BY_EXT`); use *Verify Manifest* for whole-file fixity.

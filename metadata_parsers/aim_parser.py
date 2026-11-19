@@ -25,7 +25,19 @@ import os
 import re
 import struct
 
+import numpy as np
+
 AIM_EXTENSIONS = [".aim"]
+
+# Segmentation volumes (type 0x00150001) are run-length encoded: int32 block
+# size, background value, foreground value, then alternating background /
+# foreground run lengths starting with background. A run length is the sum of
+# its bytes where every 0xFF byte counts 254 and continues the run; the first
+# byte below 0xFF ends it. Verified against real files: the runs sum exactly to
+# the voxel count and the foreground overlays the bright structures of the
+# parent volume. Larger blocks are not decoded.
+SEG_RLE_TYPE = 0x00150001
+MAX_RLE_BYTES = 256 << 20
 
 # Scanco type code -> (label, numpy dtype, bytes per voxel). Other codes are
 # reported as "Scanco type 0x...." and treated as not previewable.
@@ -121,6 +133,57 @@ def describe_voxel_type(type_code, dims, data_bytes):
         label, dtype, bpv = info
         return label, dtype, bpv, data_bytes != voxels * bpv
     return f"Scanco type 0x{type_code:08X}", None, None, data_bytes < voxels
+
+
+def decode_rle_runs(block, n_voxels):
+    """
+    Decodes a segmentation block into (runs, background, foreground), with runs
+    an int64 array alternating background/foreground. Returns None when the
+    block does not follow the layout or its runs do not add up to n_voxels.
+    """
+    d = np.frombuffer(block, dtype=np.uint8)
+    if d.size < 7 or struct.unpack_from("<i", block, 0)[0] != d.size:
+        return None
+    body = d[6:]
+    ends = np.flatnonzero(body != 255)
+    if ends.size == 0 or ends[-1] != body.size - 1:
+        return None  # last run never terminated
+    starts = np.concatenate(([0], ends[:-1] + 1))
+    runs = (ends - starts) * 254 + body[ends].astype(np.int64)
+    if int(runs.sum()) != n_voxels:
+        return None
+    return runs, int(d[4]), int(d[5])
+
+
+def read_segmentation_runs(file_path, header):
+    """Decoded runs of a segmentation file described by read_aim_header(), or None."""
+    if header["TypeCode"] != SEG_RLE_TYPE or not 0 < header["DataBytes"] <= MAX_RLE_BYTES:
+        return None
+    if header["FileSize"] < header["DataOffset"] + header["DataBytes"]:
+        return None
+    try:
+        with open(file_path, "rb") as f:
+            f.seek(header["DataOffset"])
+            block = f.read(header["DataBytes"])
+        nx, ny, nz = header["Dimensions"]
+        return decode_rle_runs(block, nx * ny * nz)
+    except (OSError, struct.error):
+        return None
+
+
+def segmentation_slice(decoded, dims, z):
+    """Boolean (ny, nx) mask of axial slice z from decode_rle_runs() output."""
+    runs = decoded[0]
+    nx, ny, _ = dims
+    cum = np.concatenate(([0], np.cumsum(runs)))
+    a, b = z * nx * ny, (z + 1) * nx * ny
+    out = np.zeros(b - a, dtype=bool)
+    for i in range(int(np.searchsorted(cum, a, "right")) - 1, int(np.searchsorted(cum, b, "left"))):
+        if i % 2 == 1:
+            lo, hi = max(int(cum[i]), a) - a, min(int(cum[i + 1]), b) - a
+            if hi > lo:
+                out[lo:hi] = True
+    return out.reshape(ny, nx)
 
 
 # ── processing log ──────────────────────────────────────────────────────────
@@ -309,6 +372,16 @@ def parse_aim_metadata(file_path, application=None):
             "DensityUnit": p.get("dens in units", ""),
         }
 
+    # foreground size of a run-length encoded segmentation
+    raw["SegmentationDecoded"] = False
+    if raw["IsSegmentation"] and hdr["TypeCode"] == SEG_RLE_TYPE:
+        decoded = read_segmentation_runs(file_path, hdr)
+        if decoded is not None:
+            runs = decoded[0]
+            raw["SegmentationDecoded"] = True
+            raw["SegmentedVoxels"] = int(runs[1::2].sum())
+            raw["SegmentedRuns"] = int(runs.size)
+
     # companion files
     try:
         dir_names = set(os.listdir(os.path.dirname(os.path.abspath(file_path))))
@@ -342,6 +415,12 @@ def parse_aim_metadata(file_path, application=None):
                 "Intensity [uA]", "Integration time [us]", "No. projections per 180", "Calibration Data"):
         if lg.get(key):
             text_lines.append(f"{key}: {lg[key]}")
+    if raw["SegmentationDecoded"]:
+        vol = raw["SegmentedVoxels"] * el[0] * el[1] * el[2]
+        text_lines.append(f"Segmented volume: {raw['SegmentedVoxels']:,} voxels = {vol:.3f} mm3 "
+                          f"({100.0 * raw['SegmentedVoxels'] / (dims[0] * dims[1] * dims[2]):.2f}% of the matrix)")
+    elif raw["IsSegmentation"] and raw["Compressed"]:
+        text_lines.append("Segmented volume: not decoded (unrecognized compressed layout)")
     if raw.get("Segmentation"):
         sg = raw["Segmentation"]
         text_lines.append("Segmentation: " + " > ".join(sg["Procedures"]))

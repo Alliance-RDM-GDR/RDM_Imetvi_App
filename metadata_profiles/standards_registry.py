@@ -185,8 +185,10 @@ STANDARDS_REGISTRY = {
             "Voxel values: histograms, bone/tissue volume or density measures are "
             "outside this header-only inspection; the statistics reported come "
             "from the file's own processing log.",
-            "Segmentation labels: the compressed segmentation block is not decoded, "
-            "so object counts and volumes are not computed.",
+            "Segmentations: only the foreground size (voxels, mm³, % of the matrix) "
+            "is computed from the run-length block. Per-object counts, the tissue "
+            "volume needed for BV/TV, and morphometry are analysis, not metadata, "
+            "and are left to the analysis software.",
         ],
     },
     "Medical Imaging": {
