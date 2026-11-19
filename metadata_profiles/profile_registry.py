@@ -16,6 +16,7 @@ from metadata_profiles.netcdf_remote_sensing_profile import NETCDF_REMOTE_SENSIN
 from metadata_profiles.las_lidar_profile import LAS_LIDAR_PROFILE
 from metadata_profiles.nifti_bids_profile import NIFTI_BIDS_PROFILE
 from metadata_profiles.omezarr_microscopy_profile import OMEZARR_MICROSCOPY_PROFILE
+from metadata_profiles.aim_microct_profile import AIM_MICROCT_PROFILE
 
 # HDF5 and PNG profiles are compact enough to define inline here.
 HDF5_GENERAL_PROFILE = {
@@ -66,7 +67,8 @@ PROFILE_REGISTRY = {
     "Medical Imaging":      DICOM_MEDICAL_PROFILE,
     "Neuroimaging (BIDS)":  NIFTI_BIDS_PROFILE,
     "Microscopy (OME-Zarr)": OMEZARR_MICROSCOPY_PROFILE,
-    "Astronomy":            FITS_ASTRONOMY_PROFILE,
+    "Micro-CT (Scanco)":    AIM_MICROCT_PROFILE,
+    "Astronomy":           FITS_ASTRONOMY_PROFILE,
     "Astrophysical Simulation": PPMSTAR_SIMULATION_PROFILE,
     "General / HDF5":       HDF5_GENERAL_PROFILE,
 }

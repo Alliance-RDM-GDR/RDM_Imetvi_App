@@ -89,6 +89,13 @@ REQUIRED_FIELDS_REGISTRY = {
         "DimensionX", "DimensionY", "PixelSizeX", "PixelSizeY",
         "PixelType", "Channels", "NA", "Magnification",
     ],
+    # Scanco AIM: geometry plus the scan parameters a micro-CT methods section
+    # needs (the scanner writes them into every AIM, including segmentations).
+    "AIM": [
+        "MatrixSizeX", "MatrixSizeY", "MatrixSizeZ",
+        "VoxelSizeX", "VoxelSizeY", "VoxelSizeZ", "VoxelType",
+        "TubeVoltage", "TubeCurrent", "AcquisitionDate",
+    ],
     "LAS": [
         "LASVersion", "PointFormatDescription", "PointCount",
         "BoundingBox_MinX", "BoundingBox_MinY",

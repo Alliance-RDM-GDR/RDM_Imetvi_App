@@ -6,6 +6,48 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-19 — Scanco micro-CT (AIM) support
+
+Driven by FRDR deposit 1925 (Lost Lagoon 2018 threespine stickleback micro-CT:
+64 samples, each a reconstructed `.aim` volume of 0.5-2 GB, a `_seg.aim`
+segmentation, a `.txt` header dump and an Amira `.hx` script). None of these
+could be opened before.
+
+- New format **AIM** (`.aim`) with context *Micro-CT (Scanco)*, profile with
+  units, standards entry (REMBI) and required-fields list. Header only: the
+  whole 128-volume deposit loads in about 3 s.
+- Both on-disk versions are read: AIM 020 (VAX F-float voxel size) and the
+  64-bit AIM 030 that Scanco switches to above 2 GB (2 of the 64 samples).
+- Fields: matrix/voxel/physical size, voxel type, scanner codes, tube voltage
+  and current, integration time, projections, acquisition date, source scan
+  file, specimen label, density calibration, grey-value statistics; for
+  segmentations the processing chain, Gaussian filter and thresholds (in
+  mg HA/ccm) and the link to the parent volume.
+- Companion files: the `.txt` is cross-checked against the header; the `.hx`
+  is checked for target file (exact case), matrix size and header offset.
+- New curation flags `AIM_TRUNCATED`, `AIM_HX_BROKEN_LINK`; suggestions (EN/FR)
+  for case-mismatched or inconsistent `.hx`, `.txt` that disagrees with the
+  header, instrument identified only by numeric codes, and missing
+  Biosample/Specimen information.
+- *Load Folder* on a root that only holds one sub-folder per sample now finds
+  the files in the tree and selects the format automatically.
+- Thumbnail: middle axial slice of an uncompressed volume (one slice read).
+- `.aim` files are MD5-hashed only up to 64 MiB so a folder of volumes does not
+  read tens of GB on load; use *Verify Manifest* for whole-file fixity.
+- 28 new tests (294 total). New files: `metadata_parsers/aim_parser.py`,
+  `standardizers/aim_microct_standardizer.py`,
+  `metadata_profiles/aim_microct_profile.py`, `tests/test_aim_parser.py`. No new
+  dependencies.
+- Checked on the real deposit: 128 `.aim` parsed with no errors. Findings for
+  the depositor: all 64 `.hx` scripts load `LL01.AIM` (upper case) while the
+  files are `ll01.aim`, which breaks on case-sensitive systems; the 64 samples
+  come from only 28 source scans (each scan holds 2-3 specimens, e.g.
+  `HJ_SB17_LL12_LL01_LL26`), so crops of one scan are not independent
+  acquisitions; species, specimen preparation and scanner model are not in the
+  files.
+
+---
+
 ## 2026-09-29 — MRI (NIfTI/BIDS) and light-sheet (OME-Zarr) support
 
 Driven by FRDR deposit 1828 (mouse TBI: 10 animals x 3 MRI sessions in BIDS,

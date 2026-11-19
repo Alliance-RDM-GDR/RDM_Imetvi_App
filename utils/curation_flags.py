@@ -6,7 +6,8 @@
 #        DIMENSION_OUTLIER (deviates from dataset mode), LOSSY_TIFF (JPEG-in-TIFF),
 #        NO_CRS_FOUND (georeferenced context reports no embedded CRS),
 #        INCOMPLETE_DUMP / UNDOCUMENTED_VARIABLES / RESTART_RECORDS (simulation output),
-#        BIDS_TEMPLATE_METADATA / BIDS_DATASET_INCOMPLETE / NIFTI_NO_SFORM (neuroimaging/BIDS).
+#        BIDS_TEMPLATE_METADATA / BIDS_DATASET_INCOMPLETE / NIFTI_NO_SFORM (neuroimaging/BIDS),
+#        AIM_TRUNCATED / AIM_HX_BROKEN_LINK (Scanco micro-CT).
 
 import hashlib
 import os
@@ -17,11 +18,16 @@ from collections import Counter
 # Whole-file fixity for such data belongs to the dataset's own manifest.
 MAX_MD5_BYTES = 1 << 30
 
+# Per-extension override for formats whose files are routinely large: a Scanco
+# micro-CT volume is 0.5-2 GB, so hashing a folder of them would read tens of GB.
+MAX_MD5_BYTES_BY_EXT = {".aim": 64 << 20}
+
 
 def _compute_md5(file_path):
     h = hashlib.md5()
     try:
-        if os.path.getsize(file_path) > MAX_MD5_BYTES:
+        limit = MAX_MD5_BYTES_BY_EXT.get(os.path.splitext(file_path)[1].lower(), MAX_MD5_BYTES)
+        if os.path.getsize(file_path) > limit:
             return None
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):

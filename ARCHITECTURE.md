@@ -188,6 +188,7 @@ Loading a file:
 | LAS | `.las .laz` | Remote Sensing (LiDAR) | `las_parser.py` | `las_lidar_standardizer.py` |
 | NIfTI | `.nii .nii.gz` | Neuroimaging (BIDS) | `nifti_parser.py` | `nifti_neuroimaging_standardizer.py` |
 | OME-Zarr | `.zarr .ome.zarr .tar` | Microscopy (OME-Zarr) | `omezarr_parser.py` | `omezarr_microscopy_standardizer.py` |
+| AIM | `.aim` | Micro-CT (Scanco) | `aim_parser.py` | `aim_microct_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -265,6 +266,23 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
   normalized to µm and compared with the BIDS sidecar (`DownsampleFactorXY`).
   A single excitation/emission pair on a multi-channel image is withheld
   (`WavelengthAmbiguous`) instead of being attributed to one channel.
+- **Scanco AIM** (`aim_parser.py`): header only (volumes are 0.5-2 GB), both
+  on-disk versions. AIM 020 is 32-bit with VAX F-float element sizes; AIM 030
+  (`AIMDATA_V030`, scans over 2 GB) is int64 with sizes in nm. Data offset is
+  `pre-header + structure + log` in both. The text *Processing Log* inside the
+  header carries scanner parameters, calibration, value statistics and, for
+  segmentations, the filter/threshold chain; the `.txt` beside a volume is a
+  dump of that same header and is only cross-checked. The `.hx` Amira script's
+  `load -raw` line is checked for target file (exact case), matrix size and
+  header offset. Segmentations (`*_seg.aim`) hold a compressed block that is not
+  decoded. `read_aim_header()` is reused by `utils/thumbnail.py`, which previews
+  the middle axial slice of an uncompressed volume by reading one slice.
+  The standardizer reports `MatrixSizeX/Y/Z`, not `DimensionX/Y` (crops of one
+  deposit differ in size by design). `.aim` files are MD5-hashed only up to
+  64 MiB (`MAX_MD5_BYTES_BY_EXT`); use *Verify Manifest* for whole-file fixity.
+- **Nested sample folders.** If *Load Folder* finds no supported file at the top
+  level, `collect_nested_files()` searches the tree, selects the format of the
+  first supported file it meets and keeps only that format's files.
 - **Standards suggestions.** Standardizers attach `_Suggestions`, a list of
   `{Code, Standard, Message, Message_fr, Flag}` dicts built in
   `utils/bids.py`. `main.py` renders them in the active language (Recommended

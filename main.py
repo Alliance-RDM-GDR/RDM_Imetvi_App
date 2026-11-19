@@ -31,6 +31,7 @@ from metadata_parsers.las_parser import parse_las_metadata, analyze_las_point_da
 from metadata_parsers.ppmstar_parser import parse_ppmstar_metadata, PPMSTAR_EXTENSIONS
 from metadata_parsers.nifti_parser import parse_nifti_metadata
 from metadata_parsers.omezarr_parser import parse_omezarr_metadata, OMEZARR_EXTENSIONS
+from metadata_parsers.aim_parser import parse_aim_metadata, AIM_EXTENSIONS
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -47,6 +48,7 @@ from standardizers.las_lidar_standardizer import standardize_las_lidar_metadata
 from standardizers.ppmstar_simulation_standardizer import standardize_ppmstar_simulation_metadata
 from standardizers.nifti_neuroimaging_standardizer import standardize_nifti_neuroimaging_metadata
 from standardizers.omezarr_microscopy_standardizer import standardize_omezarr_microscopy_metadata
+from standardizers.aim_microct_standardizer import standardize_aim_microct_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
@@ -145,6 +147,13 @@ FORMAT_REGISTRY = {
         "parser": parse_omezarr_metadata,
         "contexts": ["Microscopy (OME-Zarr)"],
     },
+    # Scanco micro-CT volumes (.aim, versions 020 and 030) and their
+    # segmentations; the .txt dump and Amira .hx script beside them are read too.
+    "AIM": {
+        "extensions": AIM_EXTENSIONS,
+        "parser": parse_aim_metadata,
+        "contexts": ["Micro-CT (Scanco)"],
+    },
     # Simulation output, not images: radial profiles, run history, raw 3-D
     # cube blocks and setup files of the PPMstar stellar hydrodynamics code.
     "PPMstar": {
@@ -179,6 +188,7 @@ FORMAT_STANDARDIZERS = {
     "PPMstar": {"Astrophysical Simulation": standardize_ppmstar_simulation_metadata},
     "NIfTI": {"Neuroimaging (BIDS)": standardize_nifti_neuroimaging_metadata},
     "OME-Zarr": {"Microscopy (OME-Zarr)": standardize_omezarr_microscopy_metadata},
+    "AIM": {"Micro-CT (Scanco)": standardize_aim_microct_metadata},
 }
 
 
@@ -737,6 +747,9 @@ class MetadataViewer(QWidget):
             return
 
         file_paths = self.collect_folder_files(folder_path)
+        if not file_paths:
+            # a dataset root that only holds one sub-folder per sample
+            file_paths = self.collect_nested_files(folder_path)
 
         if not file_paths:
             QMessageBox.information(self, tr("msg_no_files_found_title"), tr("msg_no_files_found_text"))
@@ -786,6 +799,25 @@ class MetadataViewer(QWidget):
                 if get_extension(fname) in wanted:
                     found.append(os.path.join(dirpath, fname))
         return found
+
+    def collect_nested_files(self, folder_path):
+        """
+        Fallback for a folder with no supported files of its own but sub-folders
+        that have some (e.g. one folder per micro-CT sample). Searches the whole
+        tree, selects the format of the first supported file found, and returns
+        only the files that format handles, so the batch stays homogeneous.
+        """
+        candidates = []
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            dirnames.sort()
+            candidates += [os.path.join(dirpath, f) for f in sorted(filenames)
+                           if get_extension(f) in ALL_EXTENSIONS]
+        if not candidates:
+            return []
+        self.select_format_for_extension(candidates[0])
+        fmt = FORMAT_REGISTRY.get(self.format_dropdown.currentText())
+        wanted = set(fmt["extensions"]) if fmt else set(ALL_EXTENSIONS)
+        return [p for p in candidates if get_extension(p) in wanted]
 
     def load_zarr_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_zarr"))

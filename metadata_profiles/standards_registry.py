@@ -154,6 +154,41 @@ STANDARDS_REGISTRY = {
             "transformations other than scale.",
         ],
     },
+    "Micro-CT (Scanco)": {
+        "standard_name": "REMBI (Recommended Metadata for Biological Images) — Scanco micro-CT (AIM)",
+        "reference_url": "https://doi.org/10.1038/s41592-021-01166-8",
+        "secondary_url": "https://www.ebi.ac.uk/bioimage-archive/rembi/",
+        "secondary_label": "BioImage Archive — REMBI guidance",
+        "covered": [
+            "Image acquisition: voxel size and matrix size, physical extent, voxel "
+            "type, X-ray tube voltage and current, integration time, projections, "
+            "scanner type/ID codes, acquisition date, source scan file, "
+            "calibration (density unit, slope/intercept, µ scaling). Both AIM "
+            "versions are read (020 and the 64-bit 030 used for scans over 2 GB). "
+            "Header only — voxel data is never read.",
+            "Image analysis: the processing chain recorded in the AIM log and, for "
+            "segmentation files, the Gaussian filter and threshold values (in "
+            "density units), plus the link to the parent grey-value volume.",
+            "Companion files: the .txt header dump (cross-checked against the "
+            "AIM header) and the Amira/Avizo .hx script (target file, matrix size "
+            "and header offset checked against the volume).",
+            "Suggestions: truncated files, Amira scripts that point to a missing or "
+            "differently-cased file, instrument identified only by codes, missing "
+            "Biosample/Specimen information.",
+        ],
+        "not_covered": [
+            "Biosample and Specimen (species, collection site/date, fixation, "
+            "storage, staining): AIM files hold only a free-text scan label; these "
+            "must be supplied in the README or study record.",
+            "Instrument make/model: the scanner is identified by numeric codes only "
+            "(the code tables are not published in the file).",
+            "Voxel values: histograms, bone/tissue volume or density measures are "
+            "outside this header-only inspection; the statistics reported come "
+            "from the file's own processing log.",
+            "Segmentation labels: the compressed segmentation block is not decoded, "
+            "so object counts and volumes are not computed.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "reference_url": "https://www.dicomstandard.org/",

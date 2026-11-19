@@ -28,6 +28,7 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   | NetCDF | `.nc` `.nc4` | ISO 19115 via CF Conventions |
   | LAS/LAZ (LiDAR) | `.las` `.laz` | ISO 19115 / ASPRS LAS |
   | NIfTI (MRI, BIDS) | `.nii` `.nii.gz` (+ JSON sidecar, `.bval/.bvec`) | BIDS 1.9.0 / NIfTI-1 / ARRIVE 2.0 |
+  | Scanco micro-CT (AIM) | `.aim` (versions 020 and 030; + `.txt` dump and Amira `.hx` script) | REMBI (micro-CT acquisition + analysis) |
   | OME-Zarr (light-sheet, BIDS Microscopy) | `.zarr` folder, or an uncompressed BIDS `.tar` (read in place, never extracted) | OME-NGFF 0.4 / BIDS Microscopy / REMBI |
   | PPMstar (stellar hydrodynamics output) | `.rprof` `.hstry` `.include` `.F` and raw cube blocks `.aaa`–`.ccc` | IVOA SimDM (descriptive core) |
 
@@ -89,6 +90,8 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   - `BIDS_TEMPLATE_METADATA` — dataset_description/sidecar still hold template text or unresolved converter placeholders
   - `BIDS_DATASET_INCOMPLETE` — missing license/authors, or a required sidecar field/`.bval`/`.bvec` for the image type
   - `NIFTI_NO_SFORM` — NIfTI with no sform (or no spatial transform at all)
+  - `AIM_TRUNCATED` — a micro-CT volume smaller than its header declares (incomplete copy)
+  - `AIM_HX_BROKEN_LINK` — an Amira/Avizo `.hx` script that points to a file not in the folder
 - 💡 **Standards suggestions** — for NIfTI and OME-Zarr the Recommended
   Fields and Curation tabs list concrete, standard-referenced actions
   (BIDS, NIfTI-1, ARRIVE 2.0, OME-NGFF, REMBI), in English or French.
