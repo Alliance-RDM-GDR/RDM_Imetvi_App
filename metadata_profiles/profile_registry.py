@@ -17,6 +17,8 @@ from metadata_profiles.las_lidar_profile import LAS_LIDAR_PROFILE
 from metadata_profiles.nifti_bids_profile import NIFTI_BIDS_PROFILE
 from metadata_profiles.omezarr_microscopy_profile import OMEZARR_MICROSCOPY_PROFILE
 from metadata_profiles.aim_microct_profile import AIM_MICROCT_PROFILE
+from metadata_profiles.labels_fr import LABELS_FR, UNITS_FR
+from i18n import get_language
 
 # HDF5 and PNG profiles are compact enough to define inline here.
 HDF5_GENERAL_PROFILE = {
@@ -94,4 +96,7 @@ def format_label(key, profile):
         return key
     label = entry.get("label", key)
     unit  = entry.get("unit")
+    if get_language() == "FR":
+        label = LABELS_FR.get(label, label)
+        unit = UNITS_FR.get(unit, unit)
     return f"{label} ({unit})" if unit else label

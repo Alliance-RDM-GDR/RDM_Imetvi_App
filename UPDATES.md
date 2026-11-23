@@ -6,6 +6,22 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-23 — French field labels and standards text, LICENSE
+
+- The metadata field labels in the Recommended Fields tab, the units that
+  are words (days, cells, planes...), and the Metadata Standard Info dialog
+  are now translated when the language is FR. They live in
+  `metadata_profiles/labels_fr.py` and `standards_fr.py`; the English
+  profiles and registry are unchanged and remain the fallback. Exported
+  JSON/CSV keys and values are not translated.
+- The fixed words in the Recommended Fields rendering (channel lines,
+  dataset inventory, NetCDF variables) go through `tr()` as well.
+- "Metadata Standard Info" now has a tooltip, so every sidebar and top-bar
+  button has one.
+- Added the missing `LICENSE` file (MIT, as the README states).
+- New `tests/test_translations_fr.py`: every profile label needs a French
+  entry and the standards tables must match the English structure.
+
 ## 2026-11-19 (later) — AIM segmentation volumes
 
 - Run-length segmentation blocks (`_seg.aim`, type `0x00150001`) are now

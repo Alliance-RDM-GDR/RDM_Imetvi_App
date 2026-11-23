@@ -9,6 +9,9 @@
 # acquisition software in the image file itself — those have to be supplied
 # by the researcher through a separate record (ELN, repository submission
 # form, etc.), and this app cannot extract what isn't in the file.
+from i18n import get_language
+from metadata_profiles.standards_fr import STANDARDS_FR
+
 STANDARDS_REGISTRY = {
     "Microscopy": {
         "standard_name": "REMBI (Recommended Metadata for Biological Images)",
@@ -363,8 +366,15 @@ STANDARDS_REGISTRY = {
 
 
 def get_standard_info(context_name):
-    """Returns the standards registry entry for a context, or None."""
-    return STANDARDS_REGISTRY.get(context_name)
+    """Returns the standards registry entry for a context, or None.
+
+    In French, the human-readable strings come from standards_fr.py; URLs
+    and anything not translated there stay as in the English entry.
+    """
+    info = STANDARDS_REGISTRY.get(context_name)
+    if info and get_language() == "FR":
+        return {**info, **STANDARDS_FR.get(context_name, {})}
+    return info
 
 
 def get_reference_summary(context_name):

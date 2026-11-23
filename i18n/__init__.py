@@ -5,10 +5,9 @@
 # tooltips, dialog titles, error/success messages) between English and
 # French, per the project's Canadian bilingual requirement.
 #
-# Metadata field labels (from metadata_profiles/*_profile.py) and the
-# discipline-standard descriptions (from standards_registry.py) are NOT
-# covered here — those describe the extracted data itself, catalogued
-# separately, and translating them is out of this module's scope.
+# Metadata field labels and the standards descriptions have their own
+# French tables (metadata_profiles/labels_fr.py, standards_fr.py); they
+# consult get_language() here.
 
 from i18n.strings_en import STRINGS_EN
 from i18n.strings_fr import STRINGS_FR

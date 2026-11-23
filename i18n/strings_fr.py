@@ -9,8 +9,20 @@ STRINGS_FR = {
     "label_select_format": "Sélectionner le format :",
     "label_select_application": "Sélectionner l'application :",
     "btn_standards_info": "Info sur la norme de métadonnées",
+    "tooltip_standards_info": "Affiche la norme de métadonnées visée par l'application sélectionnée, ce que cette application extrait du fichier et ce qu'il faut fournir séparément.",
     "label_select_file": "Sélectionner le fichier :",
     "label_language": "Langue :",
+
+    # --- Recommended Fields rendering ---
+    "render_channel_line": "  - Canal {idx} : {name}",
+    "render_channel_exc": "  |  Exc. : {v} nm",
+    "render_channel_em": "  |  Ém. : {v} nm",
+    "render_channel_exp": "  |  Exp. : {v} s",
+    "render_dims": "Dim. :",
+    "render_type": "Type :",
+    "render_compression": "Compression :",
+    "render_no_standard_name": "pas de standard_name (non mappé CF)",
+    "render_shape": "forme :",
 
     # --- Sidebar: File ---
     "group_file": "Fichier",

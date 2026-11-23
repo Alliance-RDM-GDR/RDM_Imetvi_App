@@ -57,8 +57,9 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
 - 🇨🇦 **Bilingual EN/FR interface** — a language selector switches every
   button, label, tooltip, dialog, and error/success message between
   English and French, including the dynamically rendered Curation
-  summary. (Extracted metadata field labels and standards documentation
-  text are not yet translated — see [`ARCHITECTURE.md`](ARCHITECTURE.md).)
+  summary, the metadata field labels in the Recommended Fields tab, and
+  the text of the Metadata Standard Info dialog. (Values read from the
+  file itself, and exported JSON/CSV keys, are never translated.)
 - 💬 **Tooltips on every sidebar action** — hover any button to see what
   it does before clicking it.
 - 🌳 **Readable CRS WKT** — a CRS's WKT definition (often 1000+ characters

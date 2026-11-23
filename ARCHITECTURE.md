@@ -92,12 +92,7 @@ file's stored `text_report` (`self.current_display_text_report`), so a
 language switch updates what's currently on screen, not just future
 loads.
 
-Two things are deliberately **not** translated: metadata field labels
-(`metadata_profiles/*_profile.py`) and the standards-coverage text
-(`standards_registry.py`). Both describe the extracted data itself, are
-sourced from ~10 separate profile files rather than one UI layer, and
-translating them is a larger, separate effort than covering UI chrome —
-tracked as a possible follow-up, not part of `i18n/`.
+Field labels and the standards-coverage text have their own French tables instead of being routed through `tr()`: `metadata_profiles/labels_fr.py` maps each English profile label (and the few language-dependent units) to French, and `metadata_profiles/standards_fr.py` mirrors `STANDARDS_REGISTRY` item for item. The `*_profile.py` files and the English registry stay the source of truth; `format_label()` and `get_standard_info()` consult `get_language()` and fall back to English when a label has no French entry. Only display text is translated: raw metadata keys, extracted values, URLs and anything written to JSON, CSV or sidecar files stay as they are. `tests/test_translations_fr.py` fails if a profile label has no French entry or the standards tables drift out of sync.
 
 `tests/test_i18n.py` asserts `strings_en.py` and `strings_fr.py` have
 identical key sets — a key present in one but not the other is a bug
@@ -224,7 +219,7 @@ without interpreting CF semantics, which is what the NetCDF parser adds).
 main.py                        UI wiring only — no parsing logic
 i18n/                           strings_en.py / strings_fr.py + tr()/set_language() — see "Bilingual UI" below
 metadata_parsers/              One file per format; parser contract only
-metadata_profiles/             Label/unit dicts + profile_registry.py + standards_registry.py
+metadata_profiles/             Label/unit dicts + profile_registry.py + standards_registry.py (+ labels_fr.py, standards_fr.py)
 standardizers/                 One file per format/context pair; standardizer contract only
 utils/
     serialization.py           make_json_serializable() — numpy scalar/array -> JSON-safe types

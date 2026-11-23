@@ -563,6 +563,7 @@ class MetadataViewer(QWidget):
         self.format_label.setText(tr("label_select_format"))
         self.app_label.setText(tr("label_select_application"))
         self.standards_info_btn.setText(tr("btn_standards_info"))
+        self.standards_info_btn.setToolTip(tr("tooltip_standards_info"))
         self.file_selector_label.setText(tr("label_select_file"))
         self.language_label.setText(tr("label_language"))
 
@@ -939,10 +940,10 @@ class MetadataViewer(QWidget):
                     em   = ch.get("EmissionWavelength", "")
                     exp  = ch.get("ExposureTime_sec", "")
                     self.recommended_metadata_display.append(
-                        f"  - Channel {idx}: {name}"
-                        + (f"  |  Exc: {exc} nm" if exc else "")
-                        + (f"  |  Em: {em} nm" if em else "")
-                        + (f"  |  Exp: {exp} sec" if exp else "")
+                        tr("render_channel_line", idx=idx, name=name)
+                        + (tr("render_channel_exc", v=exc) if exc else "")
+                        + (tr("render_channel_em", v=em) if em else "")
+                        + (tr("render_channel_exp", v=exp) if exp else "")
                     )
             elif key == "Datasets" and isinstance(value, list):
                 self.recommended_metadata_display.append(f"{display_key}:")
@@ -950,9 +951,9 @@ class MetadataViewer(QWidget):
                     risk = f"  ⚠ {obj['Risk']}" if obj.get("Risk") else ""
                     self.recommended_metadata_display.append(
                         f"  [{obj.get('Type','?')}] {obj.get('Path','')} | "
-                        f"Dims: {obj.get('Dimensions','—')} | "
-                        f"Type: {obj.get('DataType','—')} | "
-                        f"Compression: {obj.get('Compression','—')}"
+                        f"{tr('render_dims')} {obj.get('Dimensions','—')} | "
+                        f"{tr('render_type')} {obj.get('DataType','—')} | "
+                        f"{tr('render_compression')} {obj.get('Compression','—')}"
                         f"{risk}"
                     )
             elif key == "Variables" and isinstance(value, list):
@@ -973,13 +974,13 @@ class MetadataViewer(QWidget):
                     if std_name:
                         line += f"  [{std_name}]"
                     else:
-                        line += '  <span style="color:#e67e22;">⚠ no standard_name (not CF-mapped)</span>'
+                        line += '  <span style="color:#e67e22;">⚠ ' + tr("render_no_standard_name") + '</span>'
                     if units:
                         line += f"  ({units})"
                     if long_name:
                         line += f"  — {long_name}"
                     if shape:
-                        line += f"  shape: {shape}"
+                        line += f"  {tr('render_shape')} {shape}"
                     self.recommended_metadata_display.append(line)
                     if not std_name:
                         self._reset_text_format(self.recommended_metadata_display)
