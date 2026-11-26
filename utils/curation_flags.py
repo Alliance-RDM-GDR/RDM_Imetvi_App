@@ -7,7 +7,8 @@
 #        NO_CRS_FOUND (georeferenced context reports no embedded CRS),
 #        INCOMPLETE_DUMP / UNDOCUMENTED_VARIABLES / RESTART_RECORDS (simulation output),
 #        BIDS_TEMPLATE_METADATA / BIDS_DATASET_INCOMPLETE / NIFTI_NO_SFORM (neuroimaging/BIDS),
-#        AIM_TRUNCATED / AIM_HX_BROKEN_LINK (Scanco micro-CT).
+#        AIM_TRUNCATED / AIM_HX_BROKEN_LINK (Scanco micro-CT),
+#        CRYOEM_TRUNCATED / CRYOEM_NO_SIDECAR / CRYOEM_PIXEL_MISMATCH / CRYOEM_NO_GAIN_REF (cryo-EM).
 
 import hashlib
 import os
@@ -20,7 +21,8 @@ MAX_MD5_BYTES = 1 << 30
 
 # Per-extension override for formats whose files are routinely large: a Scanco
 # micro-CT volume is 0.5-2 GB, so hashing a folder of them would read tens of GB.
-MAX_MD5_BYTES_BY_EXT = {".aim": 64 << 20}
+# Cryo-EM EER movies are 0.4-1 GB each and a session holds thousands.
+MAX_MD5_BYTES_BY_EXT = {".aim": 64 << 20, ".eer": 64 << 20, ".mrc": 256 << 20}
 
 
 def _compute_md5(file_path):

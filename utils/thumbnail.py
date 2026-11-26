@@ -57,16 +57,63 @@ def _aim_thumbnail_bytes(file_path, size):
         return None
 
 
+def _cryoem_thumbnail_bytes(file_path, size):
+    """
+    Preview of a cryo-EM file. An .mrc shows its middle section (one 16-64 MB
+    plane, strided down before windowing to the 1st-99th percentile); an .eer
+    movie shows the EPU .jpg saved next to it, since decoding electron events is
+    far too slow for a preview. None when neither is readable.
+    """
+    try:
+        import numpy as np
+        from metadata_parsers.cryoem_parser import read_mrc_header, _acquisition_stem, _ci_find
+
+        if os.path.splitext(file_path)[1].lower() == ".eer":
+            folder = os.path.dirname(os.path.abspath(file_path))
+            jpg = _ci_find(os.listdir(folder), _acquisition_stem(file_path) + ".jpg")
+            if not jpg:
+                return None
+            with Image.open(os.path.join(folder, jpg)) as img:
+                img = img.convert("RGB")
+                img.thumbnail(size)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                return buf.getvalue()
+
+        hdr = read_mrc_header(file_path)
+        dtype = {0: "i1", 1: "i2", 2: "f4", 6: "u2", 12: "f2"}.get(hdr["Mode"])
+        nx, ny, nz = hdr["Nx"], hdr["Ny"], hdr["Nz"]
+        if dtype is None or hdr["Truncated"] or not (nx and ny and nz):
+            return None
+        dt = np.dtype(("<" if hdr["ByteOrder"] == "little-endian" else ">") + dtype)
+        offset = hdr["DataOffset"] + (nz // 2) * nx * ny * dt.itemsize
+        sl = np.fromfile(file_path, dtype=dt, count=nx * ny, offset=offset).reshape(ny, nx)
+        step = max(1, min(nx, ny) // 512)
+        sl = sl[::step, ::step].astype("float64")
+        lo, hi = np.percentile(sl, (1.0, 99.0))
+        if hi <= lo:
+            hi = lo + 1
+        img = Image.fromarray((np.clip((sl - lo) / (hi - lo), 0, 1) * 255).astype("uint8"))
+        img.thumbnail(size)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception:
+        return None
+
+
 def generate_thumbnail_bytes(file_path, size=(160, 160)):
     """
     Returns PNG-encoded bytes of a thumbnail for file_path, or None if the
     format isn't rasterizable by Pillow, the file is corrupt/unreadable, or
     the extension isn't in THUMBNAIL_EXTENSIONS (e.g. DICOM, FITS, HDF5,
     NetCDF, LIF, CZI — formats needing a dedicated reader beyond Pillow).
-    Scanco .aim volumes are handled separately (middle slice).
+    Scanco .aim volumes (middle slice) and cryo-EM .mrc/.eer files are handled separately.
     """
     if os.path.splitext(file_path)[1].lower() == ".aim":
         return _aim_thumbnail_bytes(file_path, size)
+    if os.path.splitext(file_path)[1].lower() in (".mrc", ".mrcs", ".eer"):
+        return _cryoem_thumbnail_bytes(file_path, size)
     if not supports_thumbnail(file_path):
         return None
 

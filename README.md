@@ -29,6 +29,7 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   | LAS/LAZ (LiDAR) | `.las` `.laz` | ISO 19115 / ASPRS LAS |
   | NIfTI (MRI, BIDS) | `.nii` `.nii.gz` (+ JSON sidecar, `.bval/.bvec`) | BIDS 1.9.0 / NIfTI-1 / ARRIVE 2.0 |
   | Scanco micro-CT (AIM) | `.aim` (versions 020 and 030; + `.txt` dump and Amira `.hx` script) | REMBI (micro-CT acquisition + analysis) |
+  | Cryo-EM (Thermo Fisher EPU) | `.mrc` `.mrcs` `.eer` (+ EPU `.xml` sidecar, `.jpg`, `.gain`) | MRC2014 / EMPIAR / REMBI |
   | OME-Zarr (light-sheet, BIDS Microscopy) | `.zarr` folder, or an uncompressed BIDS `.tar` (read in place, never extracted) | OME-NGFF 0.4 / BIDS Microscopy / REMBI |
   | PPMstar (stellar hydrodynamics output) | `.rprof` `.hstry` `.include` `.F` and raw cube blocks `.aaa`–`.ccc` | IVOA SimDM (descriptive core) |
 
@@ -93,6 +94,10 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   - `NIFTI_NO_SFORM` — NIfTI with no sform (or no spatial transform at all)
   - `AIM_TRUNCATED` — a micro-CT volume smaller than its header declares (incomplete copy)
   - `AIM_HX_BROKEN_LINK` — an Amira/Avizo `.hx` script that points to a file not in the folder
+  - `CRYOEM_TRUNCATED` — an MRC file smaller than its header declares
+  - `CRYOEM_NO_SIDECAR` — a micrograph with no (or an unreadable) EPU `.xml`
+  - `CRYOEM_PIXEL_MISMATCH` — pixel size differs between the MRC header and the EPU XML
+  - `CRYOEM_NO_GAIN_REF` — the gain reference named in the metadata is not in the deposit
 - 💡 **Standards suggestions** — for NIfTI and OME-Zarr the Recommended
   Fields and Curation tabs list concrete, standard-referenced actions
   (BIDS, NIfTI-1, ARRIVE 2.0, OME-NGFF, REMBI), in English or French.

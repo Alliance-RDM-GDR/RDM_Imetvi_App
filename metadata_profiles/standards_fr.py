@@ -207,6 +207,39 @@ STANDARDS_FR = {
             "laissés au logiciel d'analyse.",
         ],
     },
+    "Cryo-EM": {
+        "standard_name": "MRC2014 / EMPIAR / REMBI — cryo-EM (Thermo Fisher EPU)",
+        "secondary_label": "EMPIAR — exigences de dépôt",
+        "covered": [
+            "Acquisition de l'image : taille de l'image, taille de pixel (Å, vérifiée "
+            "entre l'en-tête MRC et le XML EPU), tension d'accélération, grossissement "
+            "nominal, défocus appliqué, dose totale (e⁻/Å²), débit de dose, temps "
+            "d'exposition, nombre et cadence des images, modèle et numéro de série du "
+            "détecteur, comptage d'électrons, fente du filtre en énergie, ouvertures, "
+            "microscope et logiciel d'acquisition.",
+            "En-tête MRC2014 : mode, ordre des octets, version, type d'en-tête étendu "
+            "(FEI1/FEI2) et taille de fichier attendue par rapport à la taille réelle. "
+            "Les films EER sont lus à partir de leurs seules étiquettes BigTIFF.",
+            "Les fichiers d'une même acquisition (.mrc, _EER.eer, .xml, .jpg) et la "
+            "référence de gain nommée dans les métadonnées (recherchée dans le dossier "
+            "et ses parents). En-tête seulement — les données d'image ne sont jamais lues.",
+            "Suggestions : fichiers tronqués, fichier XML, film ou référence de gain "
+            "manquants, écart de taille de pixel, et absence d'information sur le "
+            "biospécimen et la préparation du spécimen.",
+        ],
+        "not_covered": [
+            "Biosample et préparation du spécimen (macromolécule, organisme source, "
+            "tampon, type de grille, vitrification) : EPU ne les enregistre pas ; "
+            "fournissez-les dans le README ou l'entrée EMPIAR.",
+            "Qualité de l'image : ajustement de la CTF, mouvement, épaisseur de glace et "
+            "nombre de particules sont des résultats de traitement, pas des métadonnées "
+            "d'acquisition.",
+            "Les valeurs de l'en-tête étendu FEI : le fichier XML contient les mêmes "
+            "réglages sous une forme documentée et est utilisé à la place.",
+            "Les en-têtes de cartes et demi-cartes EMDB, les séries d'inclinaison de "
+            "tomographie et les fichiers associés d'autres fabricants de microscopes.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "secondary_label": "DICOM PS3.3 — Définitions des objets d'information",

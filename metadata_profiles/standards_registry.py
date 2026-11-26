@@ -194,6 +194,39 @@ STANDARDS_REGISTRY = {
             "and are left to the analysis software.",
         ],
     },
+    "Cryo-EM": {
+        "standard_name": "MRC2014 / EMPIAR / REMBI — cryo-EM (Thermo Fisher EPU)",
+        "reference_url": "https://www.ccpem.ac.uk/mrc_format/mrc2014.php",
+        "secondary_url": "https://www.ebi.ac.uk/empiar/deposition/",
+        "secondary_label": "EMPIAR — deposition requirements",
+        "covered": [
+            "Image acquisition: image size, pixel size (Å, checked between the MRC "
+            "header and the EPU XML), accelerating voltage, nominal magnification, "
+            "applied defocus, total dose (e⁻/Å²), dose rate, exposure time, frame "
+            "count and rate, detector model and serial number, electron counting, "
+            "energy-filter slit, apertures, microscope and acquisition software.",
+            "MRC2014 header: mode, byte order, version, extended-header type "
+            "(FEI1/FEI2) and the expected versus actual file size. EER movies are "
+            "read from their BigTIFF tags only.",
+            "The files of one acquisition (.mrc, _EER.eer, .xml, .jpg) and the gain "
+            "reference named in the metadata (searched in the folder and its "
+            "parents). Header only — image data is never read.",
+            "Suggestions: truncated files, missing XML sidecar, movie or gain "
+            "reference, pixel-size mismatch, and absent biosample / specimen "
+            "preparation information.",
+        ],
+        "not_covered": [
+            "Biosample and Specimen preparation (macromolecule, source organism, "
+            "buffer, grid type, vitrification): EPU does not store them; supply them "
+            "in the README or the EMPIAR entry.",
+            "Image quality: CTF fit, motion, ice thickness and particle counts are "
+            "processing results, not acquisition metadata.",
+            "The FEI extended header values: the XML sidecar carries the same "
+            "settings in a documented form and is used instead.",
+            "EMDB map and half-map headers, tomography tilt series and other "
+            "microscope vendors' sidecars.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "reference_url": "https://www.dicomstandard.org/",

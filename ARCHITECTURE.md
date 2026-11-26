@@ -184,6 +184,7 @@ Loading a file:
 | NIfTI | `.nii .nii.gz` | Neuroimaging (BIDS) | `nifti_parser.py` | `nifti_neuroimaging_standardizer.py` |
 | OME-Zarr | `.zarr .ome.zarr .tar` | Microscopy (OME-Zarr) | `omezarr_parser.py` | `omezarr_microscopy_standardizer.py` |
 | AIM | `.aim` | Micro-CT (Scanco) | `aim_parser.py` | `aim_microct_standardizer.py` |
+| CryoEM | `.mrc .mrcs .eer` | Cryo-EM | `cryoem_parser.py` | `cryoem_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -279,6 +280,18 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
   The standardizer reports `MatrixSizeX/Y/Z`, not `DimensionX/Y` (crops of one
   deposit differ in size by design). `.aim` files are MD5-hashed only up to
   64 MiB (`MAX_MD5_BYTES_BY_EXT`); use *Verify Manifest* for whole-file fixity.
+- **Cryo-EM** (`cryoem_parser.py`): header only. An `.mrc` is read as MRC2014
+  (1024-byte header, byte order from the machine stamp, expected versus actual
+  size to catch truncation); an `.eer` movie (BigTIFF) is read from its tags
+  (acquisition XML in tag 65001), never its frames. Either file pulls in the
+  rest of its acquisition set found by name (`stem.xml`, `stem.mrc`,
+  `stem_EER.eer`, `stem.jpg`) and the gain reference named in the metadata,
+  searched in the folder and four parents. The FEI extended header is not
+  decoded: the EPU XML carries the same settings. Pixel size comes from the MRC
+  cell, then the EPU XML, then the EER sensor tag, and the first two are
+  compared. Dose is converted from e/m² to e⁻/Å². `.eer` files are not hashed
+  above 64 MiB, `.mrc` above 256 MiB; the thumbnail is the middle MRC section
+  or, for an `.eer`, the EPU `.jpg` next to it.
 - **Nested sample folders.** If *Load Folder* finds no supported file at the top
   level, `collect_nested_files()` searches the tree, selects the format of the
   first supported file it meets and keeps only that format's files.

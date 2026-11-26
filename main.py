@@ -32,6 +32,7 @@ from metadata_parsers.ppmstar_parser import parse_ppmstar_metadata, PPMSTAR_EXTE
 from metadata_parsers.nifti_parser import parse_nifti_metadata
 from metadata_parsers.omezarr_parser import parse_omezarr_metadata, OMEZARR_EXTENSIONS
 from metadata_parsers.aim_parser import parse_aim_metadata, AIM_EXTENSIONS
+from metadata_parsers.cryoem_parser import parse_cryoem_metadata, CRYOEM_EXTENSIONS
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -49,6 +50,7 @@ from standardizers.ppmstar_simulation_standardizer import standardize_ppmstar_si
 from standardizers.nifti_neuroimaging_standardizer import standardize_nifti_neuroimaging_metadata
 from standardizers.omezarr_microscopy_standardizer import standardize_omezarr_microscopy_metadata
 from standardizers.aim_microct_standardizer import standardize_aim_microct_metadata
+from standardizers.cryoem_standardizer import standardize_cryoem_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
@@ -149,6 +151,13 @@ FORMAT_REGISTRY = {
     },
     # Scanco micro-CT volumes (.aim, versions 020 and 030) and their
     # segmentations; the .txt dump and Amira .hx script beside them are read too.
+    # Cryo-EM micrographs (.mrc) and EER movies from Thermo Fisher EPU, read
+    # together with their .xml sidecars.
+    "CryoEM": {
+        "extensions": CRYOEM_EXTENSIONS,
+        "parser": parse_cryoem_metadata,
+        "contexts": ["Cryo-EM"],
+    },
     "AIM": {
         "extensions": AIM_EXTENSIONS,
         "parser": parse_aim_metadata,
@@ -189,6 +198,7 @@ FORMAT_STANDARDIZERS = {
     "NIfTI": {"Neuroimaging (BIDS)": standardize_nifti_neuroimaging_metadata},
     "OME-Zarr": {"Microscopy (OME-Zarr)": standardize_omezarr_microscopy_metadata},
     "AIM": {"Micro-CT (Scanco)": standardize_aim_microct_metadata},
+    "CryoEM": {"Cryo-EM": standardize_cryoem_metadata},
 }
 
 
@@ -1032,6 +1042,10 @@ class MetadataViewer(QWidget):
             "BIDS_TEMPLATE_METADATA":  "#c0392b",
             "BIDS_DATASET_INCOMPLETE": "#e67e22",
             "NIFTI_NO_SFORM":          "#8e44ad",
+            "CRYOEM_TRUNCATED":        "#e74c3c",
+            "CRYOEM_NO_SIDECAR":       "#e67e22",
+            "CRYOEM_PIXEL_MISMATCH":   "#c0392b",
+            "CRYOEM_NO_GAIN_REF":      "#e67e22",
         }
         flag_parts = []
         if flags_str and flags_str != "OK":

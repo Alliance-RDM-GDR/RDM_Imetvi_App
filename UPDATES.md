@@ -6,6 +6,31 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-26 — Cryo-EM support (MRC, EER, EPU)
+
+Driven by FRDR deposit 1877 (raw single-particle cryo-EM, Falcon 4i on a
+Glacios): each acquisition is four files (`.mrc`, `_EER.eer`, `.xml`, `.jpg`)
+plus one gain reference for the whole set.
+
+- New format **CryoEM** (`.mrc`, `.mrcs`, `.eer`) with context *Cryo-EM*.
+  Header-only: the MRC2014 header, the EER BigTIFF tags and the EPU `.xml`
+  sidecar are read, never the pixels or frames.
+- Reports pixel size, voltage, magnification, defocus, total dose (e⁻/Å²),
+  dose rate, exposure, frames, detector, energy filter, apertures,
+  microscope, software and date, plus which files of the acquisition and
+  which gain reference are present.
+- Checks against MRC2014 / EMPIAR / REMBI: truncated MRC, missing sidecar,
+  movie or gain reference, pixel size that disagrees between MRC and XML,
+  and no biosample/specimen preparation. Four new curation flags:
+  `CRYOEM_TRUNCATED`, `CRYOEM_NO_SIDECAR`, `CRYOEM_PIXEL_MISMATCH`,
+  `CRYOEM_NO_GAIN_REF`. Suggestions and labels are in EN and FR.
+- Thumbnails: middle MRC section, or the EPU `.jpg` for an `.eer`.
+- 19 new tests (335 total). New files: `metadata_parsers/cryoem_parser.py`,
+  `standardizers/cryoem_standardizer.py`,
+  `metadata_profiles/cryoem_profile.py`, `tests/test_cryoem_parser.py`.
+
+---
+
 ## 2026-11-23 — French field labels and standards text, LICENSE
 
 - The metadata field labels in the Recommended Fields tab, the units that

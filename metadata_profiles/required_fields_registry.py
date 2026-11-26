@@ -96,6 +96,11 @@ REQUIRED_FIELDS_REGISTRY = {
         "VoxelSizeX", "VoxelSizeY", "VoxelSizeZ", "VoxelType",
         "TubeVoltage", "TubeCurrent", "AcquisitionDate",
     ],
+    # Cryo-EM (EPU): what EMPIAR/EMDB ask for per image set.
+    "CryoEM": [
+        "ImageWidth", "ImageHeight", "PixelSize", "AccelerationVoltage",
+        "TotalDose", "Detector", "Microscope", "AcquisitionDate",
+    ],
     "LAS": [
         "LASVersion", "PointFormatDescription", "PointCount",
         "BoundingBox_MinX", "BoundingBox_MinY",
