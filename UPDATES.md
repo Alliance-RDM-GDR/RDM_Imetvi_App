@@ -38,6 +38,9 @@ Layout and workflow changes only; no parser or standardizer behaviour changed.
 - Code: new `ui/` package (`file_list.py`, `status_strip.py`,
   `fields_view.py`); about 30 new EN/FR `ui_*` strings; `main.py` shrank
   accordingly.
+- Batch loading no longer fails silently: the worker always reports back, a
+  failed curation-flag step still lists the files, and the status bar shows
+  how many files could not be read (a message box appears if none could).
 - Tests: `tests/test_ui_widgets.py` (6 new, 379 total passing).
 - Screenshot regenerated.
 

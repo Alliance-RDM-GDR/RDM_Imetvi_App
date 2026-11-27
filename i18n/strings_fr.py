@@ -243,6 +243,9 @@ STRINGS_FR = {
     "ui_status_skipped": " · {n} fichier(s) d'autres formats ignoré(s)",
     "ui_status_unsupported": "Type de fichier non pris en charge : {name}",
     "ui_status_failed": "Impossible de lire {name}",
+    "ui_status_errors": " · {n} illisible(s)",
+    "msg_load_failed_title": "Aucun fichier lisible",
+    "msg_load_failed_text": "Aucun des {n} fichiers n'a pu être lu.\n\nPremière erreur :\n{error}",
     "ui_welcome": "Déposez un fichier ou un dossier ici, ou utilisez Charger un fichier (Ctrl+O) ou Charger un dossier (Ctrl+Maj+O).\n\nFormats pris en charge : TIFF, OME-TIFF, GeoTIFF, JPG, PNG, CZI, LIF, DICOM, FITS, HDF5, NetCDF, LAS/LAZ, NIfTI, OME-Zarr, Scanco AIM, cryo-EM (MRC, EER), EyeLink ASC, Shapefile et GeoJSON.",
     "placeholder_recommended_fields": "Les champs recommandés / normalisés apparaîtront ici",
 }

@@ -241,6 +241,9 @@ STRINGS_EN = {
     "ui_status_skipped": " · {n} file(s) of other formats skipped",
     "ui_status_unsupported": "Unsupported file type: {name}",
     "ui_status_failed": "Could not read {name}",
+    "ui_status_errors": " · {n} could not be read",
+    "msg_load_failed_title": "No files could be read",
+    "msg_load_failed_text": "None of the {n} files could be read.\n\nFirst error:\n{error}",
     "ui_welcome": "Drop a file or folder here, or use Load File (Ctrl+O) or Load Folder (Ctrl+Shift+O).\n\nSupported: TIFF, OME-TIFF, GeoTIFF, JPG, PNG, CZI, LIF, DICOM, FITS, HDF5, NetCDF, LAS/LAZ, NIfTI, OME-Zarr, Scanco AIM, cryo-EM (MRC, EER), EyeLink ASC, Shapefile and GeoJSON.",
     "placeholder_recommended_fields": "Recommended / standardized fields will appear here",
 }

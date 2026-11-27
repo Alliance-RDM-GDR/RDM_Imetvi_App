@@ -2,6 +2,7 @@
 
 import sys
 import os
+import traceback
 import json
 import csv
 from collections import Counter
@@ -259,6 +260,16 @@ class FolderLoadWorker(QThread):
         self.app_name = app_name
 
     def run(self):
+        self.errors = []
+        results = []
+        try:
+            results = self._process()
+        except Exception as e:  # never leave the UI waiting for a signal that does not come
+            traceback.print_exc()
+            self.errors.append(("(batch)", f"{type(e).__name__}: {e}"))
+        self.finished.emit(results)
+
+    def _process(self):
         fmt = FORMAT_REGISTRY[self.format_name]
         standardizer = get_standardizer(self.format_name, self.app_name)
         reference = get_reference_summary(self.app_name)
@@ -277,11 +288,17 @@ class FolderLoadWorker(QThread):
                 )
                 results.append((full_path, text_report, standardized_metadata))
             except Exception as e:
-                print(f"Failed to process {os.path.basename(full_path)}: {e}")
+                traceback.print_exc()
+                self.errors.append((os.path.basename(full_path), f"{type(e).__name__}: {e}"))
 
         # Attach curation flags (requires full batch for duplicate/outlier detection)
         if results:
-            flags_by_path, checksums = compute_curation_flags(results)
+            try:
+                flags_by_path, checksums = compute_curation_flags(results)
+            except Exception as e:
+                traceback.print_exc()
+                self.errors.append(("(curation flags)", f"{type(e).__name__}: {e}"))
+                flags_by_path, checksums = {}, {}
             enriched = []
             for file_path, text_report, meta in results:
                 flags = flags_by_path.get(file_path, [])
@@ -292,7 +309,7 @@ class FolderLoadWorker(QThread):
                 enriched.append((file_path, text_report, meta))
             results = enriched
 
-        self.finished.emit(results)
+        return results
 
 
 class ManifestVerifyWorker(QThread):
@@ -981,6 +998,15 @@ class MetadataViewer(QWidget):
         if self.progress_dialog is not None:
             self.progress_dialog.setValue(self.progress_dialog.maximum())
             self.progress_dialog = None
+        try:
+            self._show_batch_results(results)
+        except Exception as e:  # show the problem instead of leaving an empty window
+            traceback.print_exc()
+            self.set_status(f"{type(e).__name__}: {e}")
+            QMessageBox.warning(self, tr("msg_load_failed_title"), f"{type(e).__name__}: {e}")
+
+    def _show_batch_results(self, results):
+        errors = list(getattr(self.folder_worker, "errors", []) or [])
 
         self.loaded_files = results
         self.all_standardized_metadata = [r[2] for r in results]
@@ -996,7 +1022,14 @@ class MetadataViewer(QWidget):
         message = tr("ui_status_loaded_folder", n=count, folder=getattr(self, "_batch_label", ""), flagged=flagged)
         if self._skipped_count:
             message += tr("ui_status_skipped", n=self._skipped_count)
+        if errors:
+            message += tr("ui_status_errors", n=len(errors))
         self.set_status(message)
+
+        if errors and not results:
+            name, error = errors[0]
+            QMessageBox.warning(self, tr("msg_load_failed_title"),
+                                tr("msg_load_failed_text", n=len(errors), error=f"{name}: {error}"))
 
     def select_loaded_file(self, index):
         if 0 <= index < len(self.loaded_files):
