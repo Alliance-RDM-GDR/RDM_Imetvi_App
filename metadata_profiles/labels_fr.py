@@ -412,6 +412,23 @@ LABELS_FR = {
     "Tracking Method": "Méthode de suivi",
     "Trial Variables Logged": "Variables d'essai consignées",
     "Trials": "Essais",
+    # Vector GIS
+    "Attribute Fields": "Champs d'attributs",
+    "Attribute Table Last Update": "Dernière mise à jour de la table d'attributs",
+    "Attribute Table Schema": "Schéma de la table d'attributs",
+    "Attribute Text Encoding": "Encodage du texte des attributs",
+    "CRS Kind": "Type de SCR",
+    "CRS Name": "Nom du SCR",
+    "CRS Unit": "Unité du SCR",
+    "Companion Files": "Fichiers associés",
+    "Coordinate Decimals Written": "Décimales écrites des coordonnées",
+    "Feature Count": "Nombre d'entités",
+    "Geometry Type": "Type de géométrie",
+    "Has M Values": "Valeurs M présentes",
+    "Has Z Values": "Valeurs Z présentes",
+    "ISO Metadata Record (.shp.xml)": "Fiche de métadonnées ISO (.shp.xml)",
+    "Layer Name (in file)": "Nom de la couche (dans le fichier)",
+    "Same-Name Counterpart": "Fichier homonyme",
 }
 
 # Only the units whose text is language-dependent; symbols (MB, nm, µm, ...)
@@ -426,5 +443,6 @@ UNITS_FR = {
     "sec": "s",
     "frames": "images",
     "samples": "échantillons",
+    "features": "entités",
     "AU": "UA",
 }

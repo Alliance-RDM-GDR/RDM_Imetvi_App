@@ -31,6 +31,7 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   | Scanco micro-CT (AIM) | `.aim` (versions 020 and 030; + `.txt` dump and Amira `.hx` script) | REMBI (micro-CT acquisition + analysis) |
   | Cryo-EM (Thermo Fisher EPU) | `.mrc` `.mrcs` `.eer` (+ EPU `.xml` sidecar, `.jpg`, `.gain`) | MRC2014 / EMPIAR / REMBI |
   | EyeLink eye tracking | `.asc` (text export of an EDF recording) | BIDS eye-tracking extension (BEP020) |
+  | Shapefile and GeoJSON | `.shp` (+ `.shx` `.dbf` `.prj` `.cpg`), `.geojson` | ISO 19115 / ESRI Shapefile / RFC 7946 |
   | OME-Zarr (light-sheet, BIDS Microscopy) | `.zarr` folder, or an uncompressed BIDS `.tar` (read in place, never extracted) | OME-NGFF 0.4 / BIDS Microscopy / REMBI |
   | PPMstar (stellar hydrodynamics output) | `.rprof` `.hstry` `.include` `.F` and raw cube blocks `.aaa`–`.ccc` | IVOA SimDM (descriptive core) |
 
@@ -99,6 +100,11 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   - `EYELINK_POOR_VALIDATION` — last calibration validation graded POOR or above 1° average error
   - `EYELINK_HIGH_MISSING` — more than half of the gaze samples are missing
   - `EYELINK_HEADER_IDENTIFIERS` — the header names the original EDF file or the operator
+  - `SHAPEFILE_INCOMPLETE` — a shapefile missing its `.shx` or `.dbf`
+  - `SHAPEFILE_TRUNCATED` — a `.shp` or `.dbf` smaller than its header declares
+  - `VECTOR_COUNT_MISMATCH` — the `.shx` and `.dbf` of a shapefile disagree on the number of records
+  - `VECTOR_TWIN_MISMATCH` — a `.shp` and a `.geojson` with the same name cover different extents
+  - `VECTOR_COORDS_OUT_OF_RANGE` — a WGS 84 GeoJSON whose coordinates are not longitude/latitude
   - `CRYOEM_TRUNCATED` — an MRC file smaller than its header declares
   - `CRYOEM_NO_SIDECAR` — a micrograph with no (or an unreadable) EPU `.xml`
   - `CRYOEM_PIXEL_MISMATCH` — pixel size differs between the MRC header and the EPU XML

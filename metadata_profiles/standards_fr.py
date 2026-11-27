@@ -271,6 +271,36 @@ STANDARDS_FR = {
             "Autres suivis oculaires (Tobii, Pupil Labs) et fichiers EDF binaires.",
         ],
     },
+    "Vector GIS": {
+        "standard_name": "ISO 19115 — Shapefile ESRI et GeoJSON (RFC 7946)",
+        "secondary_label": "GeoJSON — RFC 7946",
+        "covered": [
+            "Système de référence : la définition du .prj (nom, géographique ou projeté, "
+            "unité, code EPSG lorsqu'il correspond) pour un shapefile ; le membre « crs » "
+            "ou la valeur par défaut WGS 84 pour GeoJSON.",
+            "Étendue géographique et représentation spatiale : emprise, type de géométrie, "
+            "nombre d'entités, valeurs Z et M.",
+            "Description des attributs : noms, types et largeurs des champs d'après "
+            "l'en-tête du .dbf, ou noms et types de valeurs des propriétés en GeoJSON ; "
+            "encodage du texte d'après le .cpg.",
+            "Cohérence : le .shp, le .shx et le .dbf d'un shapefile concordent en taille "
+            "et en nombre d'enregistrements, et un .shp et un .geojson de même nom "
+            "concordent en étendue. La géométrie d'un shapefile n'est jamais lue.",
+            "Suggestions : .shx/.dbf/.prj/.cpg manquants, fichiers tronqués, coordonnées "
+            "hors de la plage lon/lat, membre « crs » hérité, fausse précision, nom de "
+            "couche différent du nom du fichier, absence de fiche ISO.",
+        ],
+        "not_covered": [
+            "Titre, résumé, généalogie, objectif, contacts et licence (identification et "
+            "généalogie ISO 19115) : aucun des deux formats ne peut les contenir ; "
+            "fournissez une fiche ISO ou décrivez-les dans le README.",
+            "Validité des géométries (auto-intersections, orientation des anneaux, "
+            "sommets en double) et topologie : de l'analyse dans un logiciel SIG, pas des métadonnées.",
+            "Signification et unités des attributs : les noms de champs sont lus, "
+            "leurs définitions ne le sont pas.",
+            "GeoPackage, KML, géodatabases fichier et fichiers GeoJSON de plus de 128 Mo.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "secondary_label": "DICOM PS3.3 — Définitions des objets d'information",

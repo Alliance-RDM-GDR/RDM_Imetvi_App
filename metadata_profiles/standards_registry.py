@@ -258,6 +258,38 @@ STANDARDS_REGISTRY = {
             "Other trackers (Tobii, Pupil Labs) and binary EDF files.",
         ],
     },
+    "Vector GIS": {
+        "standard_name": "ISO 19115 — ESRI Shapefile and GeoJSON (RFC 7946)",
+        "reference_url": "https://www.iso.org/standard/53798.html",
+        "secondary_url": "https://datatracker.ietf.org/doc/html/rfc7946",
+        "secondary_label": "GeoJSON — RFC 7946",
+        "covered": [
+            "Reference system: the .prj definition (name, geographic or projected, "
+            "unit, EPSG code when one matches) for a shapefile; the 'crs' member or "
+            "the WGS 84 default for GeoJSON.",
+            "Geographic extent and spatial representation: bounding box, geometry "
+            "type, feature count, Z and M values.",
+            "Attribute description: field names, types and widths from the .dbf "
+            "header, or the property names and value types in GeoJSON; text "
+            "encoding from the .cpg.",
+            "Consistency: the .shp, .shx and .dbf of a shapefile agree on size and "
+            "record count, and a .shp and .geojson with the same name agree on "
+            "extent. Geometry is never read from a shapefile.",
+            "Suggestions: missing .shx/.dbf/.prj/.cpg, truncated files, "
+            "coordinates outside lon/lat range, legacy 'crs' member, false "
+            "precision, layer name that differs from the file name, no ISO record.",
+        ],
+        "not_covered": [
+            "Title, abstract, lineage, purpose, contacts and licence (ISO 19115 "
+            "identification and lineage): neither format can hold them; supply an "
+            "ISO record or describe them in the README.",
+            "Geometry validity (self-intersections, ring orientation, duplicate "
+            "vertices) and topology: analysis in GIS software, not metadata.",
+            "Attribute meaning and units: field names are read, their definitions "
+            "are not.",
+            "GeoPackage, KML, file geodatabases and GeoJSON files over 128 MB.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "reference_url": "https://www.dicomstandard.org/",

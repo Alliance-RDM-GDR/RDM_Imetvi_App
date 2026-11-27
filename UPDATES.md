@@ -6,6 +6,37 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-28 — Shapefile and GeoJSON support
+
+Driven by FRDR deposit 1811 (a study-area polygon published twice, as
+`study_corridor_250m.shp` and `.geojson`).
+
+- New format **Vector** (`.shp`, `.geojson`) with context *Vector GIS*. A
+  shapefile is read from its binary headers and its `.shx`, `.dbf`, `.prj` and
+  `.cpg` companions without a GIS library; geometry is never read. GeoJSON is
+  parsed up to 128 MB.
+- Reports geometry type, feature count, CRS (name, geographic or projected,
+  unit, EPSG), bounding box, Z/M values, attribute table schema, text encoding
+  and the companion files present. Key names match the GeoTIFF/LAS contexts.
+- Checks against ISO 19115 / Shapefile / RFC 7946, with EN/FR suggestions:
+  missing or truncated shapefile parts, `.shx`/`.dbf` record mismatch, no
+  `.prj` or EPSG match, no `.cpg`, 10-character field names, no ISO record,
+  GeoJSON legacy `crs` member, projected coordinates in a WGS 84 file, false
+  precision, empty geometries, a layer name that differs from the file name,
+  and a `.shp`/`.geojson` pair that disagree on extent. Five new curation
+  flags: `SHAPEFILE_INCOMPLETE`, `SHAPEFILE_TRUNCATED`,
+  `VECTOR_COUNT_MISMATCH`, `VECTOR_TWIN_MISMATCH`,
+  `VECTOR_COORDS_OUT_OF_RANGE`.
+- Findings on the real deposit: the pair agrees on extent and record count and
+  the `.prj` is WGS 84, but the GeoJSON layer is named `study_area_buffer_500m`
+  while the files say `250m`, its coordinates carry 15 decimals, and neither
+  file has a metadata record.
+- 22 new tests (373 total). New files: `metadata_parsers/vector_parser.py`,
+  `standardizers/vector_standardizer.py`,
+  `metadata_profiles/vector_profile.py`, `tests/test_vector_parser.py`.
+
+---
+
 ## 2026-11-27 — EyeLink eye-tracking support (.asc)
 
 Driven by FRDR deposit 1835 (fMRI and eye tracking in a conditioned pain

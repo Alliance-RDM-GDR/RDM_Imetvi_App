@@ -107,6 +107,11 @@ REQUIRED_FIELDS_REGISTRY = {
         "ScreenDistance", "EyeTrackerManufacturer", "SoftwareVersion",
         "CalibrationType", "AverageCalibrationError",
     ],
+    # Vector GIS (shapefile, GeoJSON): ISO 19115 reference system, extent, type.
+    "Vector": [
+        "GeometryType", "FeatureCount", "CRS_WKT",
+        "BoundingBox_MinX", "BoundingBox_MinY", "BoundingBox_MaxX", "BoundingBox_MaxY",
+    ],
     "LAS": [
         "LASVersion", "PointFormatDescription", "PointCount",
         "BoundingBox_MinX", "BoundingBox_MinY",

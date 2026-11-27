@@ -34,6 +34,7 @@ from metadata_parsers.omezarr_parser import parse_omezarr_metadata, OMEZARR_EXTE
 from metadata_parsers.aim_parser import parse_aim_metadata, AIM_EXTENSIONS
 from metadata_parsers.cryoem_parser import parse_cryoem_metadata, CRYOEM_EXTENSIONS
 from metadata_parsers.eyelink_parser import parse_eyelink_metadata, EYELINK_EXTENSIONS
+from metadata_parsers.vector_parser import parse_vector_metadata, VECTOR_EXTENSIONS
 from standardizers.tiff_microscopy_standardizer import standardize_tiff_microscopy_metadata
 from standardizers.tiff_general_standardizer import standardize_tiff_general_metadata
 from standardizers.czi_microscopy_standardizer import standardize_czi_microscopy_metadata
@@ -53,6 +54,7 @@ from standardizers.omezarr_microscopy_standardizer import standardize_omezarr_mi
 from standardizers.aim_microct_standardizer import standardize_aim_microct_metadata
 from standardizers.cryoem_standardizer import standardize_cryoem_metadata
 from standardizers.eyelink_standardizer import standardize_eyelink_metadata
+from standardizers.vector_standardizer import standardize_vector_metadata
 from utils.serialization import make_json_serializable
 from utils.metadata_writer import write_metadata_to_file, SUPPORTED_WRITE_EXTENSIONS, is_write_supported
 from utils.sidecar import write_sidecar, sidecar_path_for
@@ -166,6 +168,12 @@ FORMAT_REGISTRY = {
         "parser": parse_eyelink_metadata,
         "contexts": ["Eye Tracking"],
     },
+    # Vector GIS: ESRI Shapefile (.shp with .shx/.dbf/.prj) and GeoJSON.
+    "Vector": {
+        "extensions": VECTOR_EXTENSIONS,
+        "parser": parse_vector_metadata,
+        "contexts": ["Vector GIS"],
+    },
     "AIM": {
         "extensions": AIM_EXTENSIONS,
         "parser": parse_aim_metadata,
@@ -208,6 +216,7 @@ FORMAT_STANDARDIZERS = {
     "AIM": {"Micro-CT (Scanco)": standardize_aim_microct_metadata},
     "CryoEM": {"Cryo-EM": standardize_cryoem_metadata},
     "EyeLink": {"Eye Tracking": standardize_eyelink_metadata},
+    "Vector": {"Vector GIS": standardize_vector_metadata},
 }
 
 
@@ -1053,6 +1062,11 @@ class MetadataViewer(QWidget):
             "NIFTI_NO_SFORM":          "#8e44ad",
             "CRYOEM_TRUNCATED":        "#e74c3c",
             "EYELINK_TRUNCATED":       "#e74c3c",
+            "SHAPEFILE_INCOMPLETE":    "#e74c3c",
+            "SHAPEFILE_TRUNCATED":     "#e74c3c",
+            "VECTOR_COUNT_MISMATCH":   "#c0392b",
+            "VECTOR_TWIN_MISMATCH":    "#8e44ad",
+            "VECTOR_COORDS_OUT_OF_RANGE": "#c0392b",
             "EYELINK_POOR_VALIDATION": "#c0392b",
             "EYELINK_HIGH_MISSING":    "#8e44ad",
             "EYELINK_HEADER_IDENTIFIERS": "#e67e22",

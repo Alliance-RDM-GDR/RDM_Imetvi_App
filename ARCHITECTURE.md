@@ -186,6 +186,7 @@ Loading a file:
 | AIM | `.aim` | Micro-CT (Scanco) | `aim_parser.py` | `aim_microct_standardizer.py` |
 | CryoEM | `.mrc .mrcs .eer` | Cryo-EM | `cryoem_parser.py` | `cryoem_standardizer.py` |
 | EyeLink | `.asc` | Eye Tracking | `eyelink_parser.py` | `eyelink_standardizer.py` |
+| Vector | `.shp .geojson` | Vector GIS | `vector_parser.py` | `vector_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -305,6 +306,16 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
   confirmation. Field names follow BEP020, which is still a proposal.
   Validation absence is a suggestion, not a flag: in the real deposit 92% of
   files had none because the participant was calibrated once per session.
+- **Vector GIS** (`vector_parser.py`): a shapefile is decoded from its fixed
+  binary headers with the standard library only (100-byte `.shp` header, `.shx`
+  size for the record count, `.dbf` header and field descriptors, `.prj` WKT,
+  `.cpg` encoding); geometry is never read. The CRS is named from the WKT and
+  matched to an EPSG code through rasterio when possible. GeoJSON is parsed
+  with `json` up to 128 MB (larger files report their size only). The CRS,
+  extent and attribute fields reuse the key names of the other geospatial
+  contexts, so `NO_CRS_FOUND` fires for a shapefile without `.prj`. A GeoJSON
+  with no `crs` member is WGS 84 by RFC 7946. A `.shp` and a `.geojson` with
+  the same name are compared on extent.
 - **Nested sample folders.** If *Load Folder* finds no supported file at the top
   level, `collect_nested_files()` searches the tree, selects the format of the
   first supported file it meets and keeps only that format's files.
