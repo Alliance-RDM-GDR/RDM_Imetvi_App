@@ -84,13 +84,14 @@ def _dimensions(standardized_metadata):
     return None
 
 
-def compute_curation_flags(results):
+def compute_curation_flags(results, progress=None):
     """
     Computes per-file curation flags from a batch of parsed results.
 
     Parameters
     ----------
     results : list of (file_path, text_report, standardized_metadata)
+    progress : optional callable(done, total), called after each checksum
 
     Returns
     -------
@@ -98,7 +99,11 @@ def compute_curation_flags(results):
     checksums     : dict  {file_path: str | None}
     """
     # --- MD5 checksums ---
-    checksums = {fp: _compute_md5(fp) for fp, _, _ in results}
+    checksums = {}
+    for done, (fp, _, _) in enumerate(results, 1):
+        checksums[fp] = _compute_md5(fp)
+        if progress:
+            progress(done, len(results))
     checksum_counts = Counter(v for v in checksums.values() if v)
 
     # --- Dimension mode (for outlier detection) ---

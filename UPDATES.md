@@ -41,6 +41,12 @@ Layout and workflow changes only; no parser or standardizer behaviour changed.
 - Batch loading no longer fails silently: the worker always reports back, a
   failed curation-flag step still lists the files, and the status bar shows
   how many files could not be read (a message box appears if none could).
+- Batch loading shows its progress to the end: the progress dialog used to
+  close when the last file was parsed while the checksum / duplicate step
+  (slow on large folders) still ran with no feedback. It now stays open,
+  switches to "Checking duplicates and integrity (n/N)", and the status bar
+  says the folder is being read. `compute_curation_flags()` takes an optional
+  `progress(done, total)` callback for this.
 - Tests: `tests/test_ui_widgets.py` (6 new, 379 total passing).
 - Screenshot regenerated.
 

@@ -93,6 +93,8 @@ STRINGS_EN = {
     "progress_cancel": "Cancel",
     "progress_batch_loading_title": "Batch Loading",
     "progress_processing": "Processing {filename} ({current}/{total})",
+    "progress_checksums": "Checking duplicates and integrity ({current}/{total})…",
+    "ui_status_loading": "Reading {n} files… this can take a while for large folders.",
 
     # --- Metadata editor dialog ---
     "dialog_title_edit_metadata": "Edit Metadata Before Writing",

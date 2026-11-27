@@ -251,6 +251,7 @@ class FolderLoadWorker(QThread):
     progress so the UI stays responsive during batch loading."""
 
     progress = pyqtSignal(int, int, str)  # current index, total, current filename
+    checksums = pyqtSignal(int, int)  # files hashed so far, total (curation step)
     finished = pyqtSignal(list)  # list of (file_path, text_report, standardized_metadata)
 
     def __init__(self, file_paths, format_name, app_name):
@@ -294,7 +295,7 @@ class FolderLoadWorker(QThread):
         # Attach curation flags (requires full batch for duplicate/outlier detection)
         if results:
             try:
-                flags_by_path, checksums = compute_curation_flags(results)
+                flags_by_path, checksums = compute_curation_flags(results, progress=self.checksums.emit)
             except Exception as e:
                 traceback.print_exc()
                 self.errors.append(("(curation flags)", f"{type(e).__name__}: {e}"))
@@ -935,10 +936,16 @@ class MetadataViewer(QWidget):
         self.progress_dialog = QProgressDialog(tr("progress_loading_files"), tr("progress_cancel"), 0, len(file_paths), self)
         self.progress_dialog.setWindowTitle(tr("progress_batch_loading_title"))
         self.progress_dialog.setMinimumDuration(0)
+        # the dialog must outlive the last file: checksums and flags still follow
+        self.progress_dialog.setAutoClose(False)
+        self.progress_dialog.setAutoReset(False)
         self.progress_dialog.setValue(0)
+        self._checksum_phase = False
+        self.set_status(tr("ui_status_loading", n=len(file_paths)))
 
         self.folder_worker = FolderLoadWorker(file_paths, selected_format, selected_app)
         self.folder_worker.progress.connect(self.on_folder_load_progress)
+        self.folder_worker.checksums.connect(self.on_folder_checksum_progress)
         self.folder_worker.finished.connect(self.on_folder_load_finished)
         self.progress_dialog.canceled.connect(self.folder_worker.terminate)
         self.folder_worker.start()
@@ -994,9 +1001,24 @@ class MetadataViewer(QWidget):
             self.progress_dialog.setLabelText(tr("progress_processing", filename=filename, current=current, total=total))
             self.progress_dialog.setValue(current)
 
+    def on_folder_checksum_progress(self, done, total):
+        dlg = self.progress_dialog
+        if dlg is None:
+            return
+        if not self._checksum_phase:
+            self._checksum_phase = True
+            dlg.setRange(0, total)
+        dlg.setLabelText(tr("progress_checksums", current=done, total=total))
+        dlg.setValue(done)
+        self.set_status(tr("progress_checksums", current=done, total=total))
+
     def on_folder_load_finished(self, results):
         if self.progress_dialog is not None:
-            self.progress_dialog.setValue(self.progress_dialog.maximum())
+            try:
+                self.progress_dialog.canceled.disconnect()  # closing must not look like a cancel
+            except TypeError:
+                pass
+            self.progress_dialog.close()
             self.progress_dialog = None
         try:
             self._show_batch_results(results)

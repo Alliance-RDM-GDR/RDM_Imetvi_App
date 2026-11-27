@@ -93,6 +93,8 @@ STRINGS_FR = {
     "progress_cancel": "Annuler",
     "progress_batch_loading_title": "Chargement par lot",
     "progress_processing": "Traitement de {filename} ({current}/{total})",
+    "progress_checksums": "Vérification des doublons et de l'intégrité ({current}/{total})…",
+    "ui_status_loading": "Lecture de {n} fichiers… cela peut prendre du temps pour les gros dossiers.",
 
     # --- Metadata editor dialog ---
     "dialog_title_edit_metadata": "Modifier les métadonnées avant l'écriture",
