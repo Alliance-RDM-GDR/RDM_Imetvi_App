@@ -132,7 +132,7 @@ The widgets live in the `ui/` package so `main.py` stays thin:
 | `ui/status_strip.py` | `StatusStrip` |
 | `ui/fields_view.py` | `build_recommended_html()` — suggestions first, then a field table, search, hide-empty, missing-required markers |
 
-A folder load picks the format of the first file and keeps only files of that
+A folder load picks the format of the most common file type and keeps only files of that
 format (the number skipped is reported in the status bar), instead of parsing
 a mixed folder with whatever format was selected.
 

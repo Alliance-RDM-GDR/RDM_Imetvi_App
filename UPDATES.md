@@ -25,8 +25,9 @@ Layout and workflow changes only; no parser or standardizer behaviour changed.
   fields marked in place.
 - **Auto-detected format and context.** The drop-downs are hidden unless the
   extension is ambiguous; a label shows what was detected.
-- **Folder loads are single-format.** The first file picks the format and
-  other files are skipped (count shown in the status bar). Loading a single
+- **Folder loads are single-format.** The most common file type picks the
+  format (previews and sidecars such as `.jpg` or `.xml` only count when
+  nothing else is there) and other files are skipped (count shown in the status bar). Loading a single
   file leaves batch mode.
 - **Removed** the *Load OME-Zarr Folder* button: *Load Folder* now accepts a
   `.zarr` folder directly.

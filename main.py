@@ -884,11 +884,20 @@ class MetadataViewer(QWidget):
 
     def _homogeneous(self, file_paths):
         """
-        Selects the format of the first file (a folder load used to parse every file with
+        Selects the format of the main file type (a folder load used to parse every file with
         whichever format happened to be selected) and keeps only the files that format
         handles. Returns (kept, number_skipped).
         """
-        self.select_format_for_extension(file_paths[0])
+        # the most common extension decides; companion files (previews, sidecars) only
+        # win when nothing else is present
+        counts = {}
+        for p in file_paths:
+            ext = get_extension(p)
+            counts[ext] = counts.get(ext, 0) + 1
+        companions = {".jpg", ".jpeg", ".png", ".xml", ".json", ".txt"}
+        main_ext = max(counts, key=lambda e: (e not in companions, counts[e]))
+        chosen = next(p for p in file_paths if get_extension(p) == main_ext)
+        self.select_format_for_extension(chosen)
         fmt = FORMAT_REGISTRY.get(self.format_dropdown.currentText())
         wanted = set(fmt["extensions"]) if fmt else set(ALL_EXTENSIONS)
         kept = [p for p in file_paths if get_extension(p) in wanted]
