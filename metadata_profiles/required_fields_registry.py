@@ -101,6 +101,12 @@ REQUIRED_FIELDS_REGISTRY = {
         "ImageWidth", "ImageHeight", "PixelSize", "AccelerationVoltage",
         "TotalDose", "Detector", "Microscope", "AcquisitionDate",
     ],
+    # EyeLink: BEP020's core recording metadata.
+    "EyeLink": [
+        "SamplingFrequency", "RecordedEye", "ScreenResolutionX", "ScreenResolutionY",
+        "ScreenDistance", "EyeTrackerManufacturer", "SoftwareVersion",
+        "CalibrationType", "AverageCalibrationError",
+    ],
     "LAS": [
         "LASVersion", "PointFormatDescription", "PointCount",
         "BoundingBox_MinX", "BoundingBox_MinY",

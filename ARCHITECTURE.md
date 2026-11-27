@@ -185,6 +185,7 @@ Loading a file:
 | OME-Zarr | `.zarr .ome.zarr .tar` | Microscopy (OME-Zarr) | `omezarr_parser.py` | `omezarr_microscopy_standardizer.py` |
 | AIM | `.aim` | Micro-CT (Scanco) | `aim_parser.py` | `aim_microct_standardizer.py` |
 | CryoEM | `.mrc .mrcs .eer` | Cryo-EM | `cryoem_parser.py` | `cryoem_standardizer.py` |
+| EyeLink | `.asc` | Eye Tracking | `eyelink_parser.py` | `eyelink_standardizer.py` |
 
 TIFF's `General / EXIF` context reuses that context's existing profile
 (shared with JPG/PNG) since `tiff_general_standardizer.py` maps baseline
@@ -292,6 +293,18 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
   compared. Dose is converted from e/m² to e⁻/Å². `.eer` files are not hashed
   above 64 MiB, `.mrc` above 256 MiB; the thumbnail is the middle MRC section
   or, for an `.eer`, the EPU `.jpg` next to it.
+- **EyeLink eye tracking** (`eyelink_parser.py`): one streaming pass over the
+  text export (hundreds of thousands of sample lines, ~0.1 s per 6 MB file).
+  Samples are counted and their timestamps give the observed rate; the header,
+  `RECCFG`/`DISPLAY_COORDS` messages, `!CAL` calibration and validation lines,
+  event summaries (`EFIX`/`ESACC`/`EBLINK`) and the names of logged trial
+  variables are kept. A file with no EyeLink header or `START` line (`.asc` is
+  also the ESRI ASCII grid extension) is reported as not EyeLink. Screen
+  distance and size are only available when the experiment code logged them
+  as a message, and the distance has no unit, so a suggestion asks for
+  confirmation. Field names follow BEP020, which is still a proposal.
+  Validation absence is a suggestion, not a flag: in the real deposit 92% of
+  files had none because the participant was calibrated once per session.
 - **Nested sample folders.** If *Load Folder* finds no supported file at the top
   level, `collect_nested_files()` searches the tree, selects the format of the
   first supported file it meets and keeps only that format's files.

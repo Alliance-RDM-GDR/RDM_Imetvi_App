@@ -18,6 +18,7 @@ from metadata_profiles.nifti_bids_profile import NIFTI_BIDS_PROFILE
 from metadata_profiles.omezarr_microscopy_profile import OMEZARR_MICROSCOPY_PROFILE
 from metadata_profiles.aim_microct_profile import AIM_MICROCT_PROFILE
 from metadata_profiles.cryoem_profile import CRYOEM_PROFILE
+from metadata_profiles.eyelink_profile import EYELINK_PROFILE
 from metadata_profiles.labels_fr import LABELS_FR, UNITS_FR
 from i18n import get_language
 
@@ -72,6 +73,7 @@ PROFILE_REGISTRY = {
     "Microscopy (OME-Zarr)": OMEZARR_MICROSCOPY_PROFILE,
     "Micro-CT (Scanco)":    AIM_MICROCT_PROFILE,
     "Cryo-EM":              CRYOEM_PROFILE,
+    "Eye Tracking":         EYELINK_PROFILE,
     "Astronomy":           FITS_ASTRONOMY_PROFILE,
     "Astrophysical Simulation": PPMSTAR_SIMULATION_PROFILE,
     "General / HDF5":       HDF5_GENERAL_PROFILE,

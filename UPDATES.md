@@ -6,6 +6,35 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-27 — EyeLink eye-tracking support (.asc)
+
+Driven by FRDR deposit 1835 (fMRI and eye tracking in a conditioned pain
+modulation study): 334 EyeLink II CL recordings exported to `.asc`, 500 Hz,
+right eye, 2 to 14 MB each.
+
+- New format **EyeLink** (`.asc`) with context *Eye Tracking*. One streaming
+  pass per file; samples are counted, never kept (all 334 files parse in 30 s).
+- Reports tracker model, software, camera and serial number, sampling rate
+  (header and observed from timestamps), recorded eye, tracking method, filter,
+  pupil measure, screen resolution and refresh rate, screen distance/size when
+  the experiment logged them, calibration type, grade and error, share of
+  missing samples, and counts of blocks, fixations, saccades, blinks, trials
+  and input events. Field names follow the BIDS eye-tracking extension
+  (BEP020).
+- Suggestions (EN/FR) and flags: `EYELINK_TRUNCATED`, `EYELINK_POOR_VALIDATION`,
+  `EYELINK_HIGH_MISSING` (over 50% of samples), `EYELINK_HEADER_IDENTIFIERS`;
+  plus suggestions for a missing validation, rate mismatch, missing date or
+  screen geometry, no original EDF and no study context.
+- Findings on the real deposit: 307 of 334 files have no validation (calibrated
+  once per session), the median file has 22% missing samples, and the header
+  date and operator were removed by the depositor but the screen distance has
+  no unit.
+- 16 new tests (351 total). New files: `metadata_parsers/eyelink_parser.py`,
+  `standardizers/eyelink_standardizer.py`,
+  `metadata_profiles/eyelink_profile.py`, `tests/test_eyelink_parser.py`.
+
+---
+
 ## 2026-11-26 — Cryo-EM support (MRC, EER, EPU)
 
 Driven by FRDR deposit 1877 (raw single-particle cryo-EM, Falcon 4i on a

@@ -240,6 +240,37 @@ STANDARDS_FR = {
             "tomographie et les fichiers associés d'autres fabricants de microscopes.",
         ],
     },
+    "Eye Tracking": {
+        "standard_name": "Extension BIDS pour l'oculométrie (BEP020) — SR Research EyeLink",
+        "secondary_label": "SR Research — assistance EyeLink",
+        "covered": [
+            "Enregistrement : fréquence d'échantillonnage (en-tête et observée à partir "
+            "des horodatages), œil enregistré, méthode de suivi, niveau de filtre, type "
+            "d'échantillon, mesure et ajustement de la pupille, modèle du suivi oculaire, "
+            "logiciel, caméra et numéro de série.",
+            "Affichage : résolution et fréquence de rafraîchissement de l'écran selon le "
+            "suivi oculaire, et distance, taille et pixels par degré lorsque le code de "
+            "l'expérience les a consignés.",
+            "Qualité : type et nombre d'étalonnages, note et erreur de validation "
+            "moyenne/maximale (degrés) de la dernière validation, part d'échantillons "
+            "manquants, et nombres d'échantillons, de blocs, de fixations, de saccades, de "
+            "clignements, d'essais et d'événements d'entrée.",
+            "Suggestions : aucune validation, validation médiocre, nombreux échantillons "
+            "manquants, fichier tronqué, écart de fréquence, identifiants laissés dans "
+            "l'en-tête, géométrie d'écran manquante, absence de l'EDF d'origine. Le "
+            "fichier est lu en un seul passage ; les échantillons sont comptés, jamais conservés.",
+        ],
+        "not_covered": [
+            "Descriptions du participant, de la séance, de la tâche et du stimulus : le "
+            "fichier ASC n'en contient que ce que le code de l'expérience a consigné "
+            "sous forme de messages.",
+            "Conversion vers BIDS (_eyetrack.tsv.gz et son fichier .json) : BEP020 est "
+            "encore une proposition ; cette application rapporte les champs, elle ne les écrit pas.",
+            "Qualité des données du regard au-delà de la validation du suivi oculaire "
+            "(précision, perte de données par essai, dérive) : de l'analyse, pas des métadonnées.",
+            "Autres suivis oculaires (Tobii, Pupil Labs) et fichiers EDF binaires.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "secondary_label": "DICOM PS3.3 — Définitions des objets d'information",

@@ -227,6 +227,37 @@ STANDARDS_REGISTRY = {
             "microscope vendors' sidecars.",
         ],
     },
+    "Eye Tracking": {
+        "standard_name": "BIDS eye-tracking extension (BEP020) — SR Research EyeLink",
+        "reference_url": "https://bids.neuroimaging.io/extensions/beps/bep_020.html",
+        "secondary_url": "https://www.sr-research.com/support/",
+        "secondary_label": "SR Research — EyeLink support",
+        "covered": [
+            "Recording: sampling frequency (header and observed from timestamps), "
+            "recorded eye, tracking method, filter level, sample type, pupil "
+            "measure and fit, tracker model, software, camera and serial number.",
+            "Display: screen resolution and refresh rate from the tracker, and the "
+            "distance, size and pixels per degree when the experiment code logged "
+            "them.",
+            "Quality: calibration type and count, grade and average/maximal "
+            "validation error (degrees) of the last validation, share of missing "
+            "samples, and counts of samples, blocks, fixations, saccades, blinks, "
+            "trials and input events.",
+            "Suggestions: no validation, poor validation, many missing samples, "
+            "truncated file, rate mismatch, identifiers left in the header, "
+            "missing screen geometry, no original EDF. The file is read in one "
+            "pass; samples are counted, never stored.",
+        ],
+        "not_covered": [
+            "Participant, session, task and stimulus descriptions: the ASC holds none "
+            "beyond what the experiment code logged as messages.",
+            "Conversion to BIDS (_eyetrack.tsv.gz and its .json sidecar): BEP020 is "
+            "still a proposal; this app reports the fields, it does not write them.",
+            "Gaze data quality beyond the tracker's own validation (precision, "
+            "data loss per trial, drift): analysis, not metadata.",
+            "Other trackers (Tobii, Pupil Labs) and binary EDF files.",
+        ],
+    },
     "Medical Imaging": {
         "standard_name": "DICOM (Digital Imaging and Communications in Medicine)",
         "reference_url": "https://www.dicomstandard.org/",
