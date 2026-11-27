@@ -10,10 +10,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QFileDialog, QMessageBox,
     QLabel, QComboBox, QProgressDialog, QDialog,
     QScrollArea, QFormLayout, QLineEdit, QDialogButtonBox,
-    QTabWidget, QGroupBox
+    QTabWidget, QGroupBox, QSplitter, QAction, QMenu, QShortcut
 )
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
-from PyQt5.QtGui import QPixmap, QTextCharFormat
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QSettings
+from PyQt5.QtGui import QPixmap, QTextCharFormat, QKeySequence
 
 # === Import parsers, standardizers, and profiles ===
 from metadata_parsers.tiff_parser import parse_tiff_metadata
@@ -69,6 +69,9 @@ from metadata_profiles.standards_registry import get_standard_info, get_referenc
 from metadata_profiles.profile_registry import get_profile, format_label
 from metadata_profiles.required_fields_registry import compute_missing_fields
 from i18n import tr, set_language, get_language, LANGUAGES
+from ui.fields_view import build_recommended_html, format_suggestion
+from ui.file_list import FileListPanel, file_flags, summarize
+from ui.status_strip import StatusStrip
 
 # === Format / Context registries ===
 # Each format declares which extensions it handles, its parser, and which
@@ -337,46 +340,105 @@ SIDEBAR_WIDTH = 260
 class MetadataViewer(QWidget):
     def __init__(self):
         super().__init__()
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 1280, 800)
+        self.setAcceptDrops(True)
+
+        # Set by main(): only the real application remembers window size, language
+        # and last folder; tests and the screenshot script leave it off.
+        self.persist_settings = False
+        self._last_dir = ""
+        self._selector_manual = False
+        self._selector_ambiguous = False
+        self._skipped_count = 0
 
         layout = QVBoxLayout()
 
-        # === Top layout ===
+        # === Toolbar: actions, detected format, language ===
         top_layout = QHBoxLayout()
 
+        self.load_file_btn = QPushButton()
+        self.load_file_btn.clicked.connect(self.load_file)
+        top_layout.addWidget(self.load_file_btn)
+
+        self.load_folder_btn = QPushButton()
+        self.load_folder_btn.clicked.connect(self.load_folder)
+        top_layout.addWidget(self.load_folder_btn)
+
+        # Menu entries are QActions: they keep the attribute names the rest of the
+        # code uses (setEnabled / setToolTip / setText) and carry the enabled state.
+        self.export_json_btn = self._new_action(self.export_as_json)
+        self.export_csv_btn = self._new_action(self.export_as_csv)
+        self.export_curation_btn = self._new_action(self.export_curation_report)
+        self.batch_compliance_btn = self._new_action(self.show_batch_compliance_summary)
+        self.export_button, self.export_menu = self._new_menu_button(
+            [self.export_json_btn, self.export_csv_btn, self.export_curation_btn, self.batch_compliance_btn])
+        top_layout.addWidget(self.export_button)
+
+        self.write_metadata_btn = self._new_action(self.write_metadata)
+        self.save_sidecar_btn = self._new_action(self.save_sidecar)
+        self.write_button, self.write_menu = self._new_menu_button([self.write_metadata_btn, self.save_sidecar_btn])
+        top_layout.addWidget(self.write_button)
+
+        self.save_checksums_btn = self._new_action(self.save_checksums)
+        self.verify_integrity_btn = self._new_action(self.verify_integrity)
+        # Works on a whole dataset folder, not on the loaded files, so it is
+        # never disabled waiting for a load.
+        self.verify_manifest_btn = self._new_action(self.verify_manifest, enabled=True)
+        self.integrity_button, self.integrity_menu = self._new_menu_button(
+            [self.save_checksums_btn, self.verify_integrity_btn, self.verify_manifest_btn])
+        top_layout.addWidget(self.integrity_button)
+
+        # Only shown when the displayed file is LAS/LAZ.
+        self.analyze_las_btn = QPushButton()
+        self.analyze_las_btn.clicked.connect(self.analyze_las_points)
+        self.analyze_las_btn.setEnabled(False)
+        self.analyze_las_btn.setVisible(False)
+        top_layout.addWidget(self.analyze_las_btn)
+
+        self.toggle_preview_btn = QAction(self)
+        self.toggle_preview_btn.setCheckable(True)
+        self.toggle_preview_btn.triggered.connect(self.toggle_preview_panel)
+        self.show_empty_action = QAction(self)
+        self.show_empty_action.setCheckable(True)
+        self.show_empty_action.toggled.connect(lambda _: self._render_recommended())
+        self.change_format_action = QAction(self)
+        self.change_format_action.setCheckable(True)
+        self.change_format_action.toggled.connect(self._on_change_format_toggled)
+        self.view_button, self.view_menu = self._new_menu_button(
+            [self.toggle_preview_btn, self.show_empty_action, self.change_format_action])
+        top_layout.addWidget(self.view_button)
+
+        top_layout.addStretch()
+
+        # Format and context are auto-selected from the file extension; the two
+        # drop-downs only appear when the choice is ambiguous (.tif: TIFF, OME-TIFF,
+        # GeoTIFF) or when asked for through View > Change format / context.
+        self.detected_label = QLabel()
+        top_layout.addWidget(self.detected_label)
+
+        self.selector_box = QWidget()
+        selector_layout = QHBoxLayout(self.selector_box)
+        selector_layout.setContentsMargins(0, 0, 0, 0)
         self.format_label = QLabel()
         self.format_dropdown = QComboBox()
         self.format_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.format_dropdown.addItems(list(FORMAT_REGISTRY.keys()))
         self.format_dropdown.currentTextChanged.connect(self.on_format_changed)
-        top_layout.addWidget(self.format_label)
-        top_layout.addWidget(self.format_dropdown)
-
+        selector_layout.addWidget(self.format_label)
+        selector_layout.addWidget(self.format_dropdown)
         self.app_label = QLabel()
         self.app_dropdown = QComboBox()
-        # Context names are set dynamically per format (on_format_changed) and
-        # vary a lot in length ("Microscopy" vs "Remote Sensing (NetCDF)") —
-        # AdjustToContents keeps the box wide enough to show the current
-        # selection in full instead of a fixed width truncating longer names.
+        # Context names are set dynamically per format (on_format_changed) and vary
+        # a lot in length, so the box adjusts to the current selection.
         self.app_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        top_layout.addWidget(self.app_label)
-        top_layout.addWidget(self.app_dropdown)
+        selector_layout.addWidget(self.app_label)
+        selector_layout.addWidget(self.app_dropdown)
+        self.selector_box.setVisible(False)
+        top_layout.addWidget(self.selector_box)
 
         self.standards_info_btn = QPushButton()
         self.standards_info_btn.clicked.connect(self.show_standards_info)
         top_layout.addWidget(self.standards_info_btn)
-
-        self.file_selector_label = QLabel()
-        self.file_selector_dropdown = QComboBox()
-        self.file_selector_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.file_selector_dropdown.setMaximumWidth(380)
-        self.file_selector_dropdown.currentIndexChanged.connect(self.select_loaded_file)
-        self.file_selector_label.hide()
-        self.file_selector_dropdown.hide()
-        top_layout.addWidget(self.file_selector_label)
-        top_layout.addWidget(self.file_selector_dropdown)
-
-        top_layout.addStretch()
 
         self.language_label = QLabel()
         self.language_dropdown = QComboBox()
@@ -391,131 +453,17 @@ class MetadataViewer(QWidget):
         # Initialize the application dropdown for the default format
         self.on_format_changed(self.format_dropdown.currentText())
 
-        # === Content row: action sidebar + thumbnail preview + tabbed metadata ===
-        content_layout = QHBoxLayout()
+        # === Content: left column (file list + preview) | right column (status + tabs) ===
+        self.splitter = QSplitter(Qt.Horizontal)
 
-        # --- Left column: action sidebar (grouped, titled sections) with the
-        # thumbnail preview stacked below it, instead of beside it — keeps
-        # the sidebar wide enough for longer translated button labels
-        # (French routinely runs longer than English) without competing with
-        # the preview for horizontal space.
         left_column_widget = QWidget()
-        left_column_layout = QVBoxLayout()
-        left_column_layout.setContentsMargins(0, 0, 0, 0)
+        left_column_layout = QVBoxLayout(left_column_widget)
+        left_column_layout.setContentsMargins(0, 0, 6, 0)
 
-        sidebar_widget = QWidget()
-        sidebar_widget.setFixedWidth(SIDEBAR_WIDTH)
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.file_group = QGroupBox()
-        file_group_layout = QVBoxLayout()
-
-        self.load_file_btn = QPushButton()
-        self.load_file_btn.clicked.connect(self.load_file)
-        file_group_layout.addWidget(self.load_file_btn)
-
-        self.load_folder_btn = QPushButton()
-        self.load_folder_btn.clicked.connect(self.load_folder)
-        file_group_layout.addWidget(self.load_folder_btn)
-
-        self.load_zarr_btn = QPushButton()
-        self.load_zarr_btn.clicked.connect(self.load_zarr_folder)
-        file_group_layout.addWidget(self.load_zarr_btn)
-
-        self.file_group.setLayout(file_group_layout)
-        sidebar_layout.addWidget(self.file_group)
-
-        self.export_group = QGroupBox()
-        export_group_layout = QVBoxLayout()
-
-        self.export_json_btn = QPushButton()
-        self.export_json_btn.clicked.connect(self.export_as_json)
-        self.export_json_btn.setEnabled(False)
-        export_group_layout.addWidget(self.export_json_btn)
-
-        self.export_csv_btn = QPushButton()
-        self.export_csv_btn.clicked.connect(self.export_as_csv)
-        self.export_csv_btn.setEnabled(False)
-        export_group_layout.addWidget(self.export_csv_btn)
-
-        self.export_curation_btn = QPushButton()
-        self.export_curation_btn.clicked.connect(self.export_curation_report)
-        self.export_curation_btn.setEnabled(False)
-        export_group_layout.addWidget(self.export_curation_btn)
-
-        self.batch_compliance_btn = QPushButton()
-        self.batch_compliance_btn.clicked.connect(self.show_batch_compliance_summary)
-        self.batch_compliance_btn.setEnabled(False)
-        export_group_layout.addWidget(self.batch_compliance_btn)
-
-        self.export_group.setLayout(export_group_layout)
-        sidebar_layout.addWidget(self.export_group)
-
-        self.write_group = QGroupBox()
-        write_group_layout = QVBoxLayout()
-
-        self.write_metadata_btn = QPushButton()
-        self.write_metadata_btn.clicked.connect(self.write_metadata)
-        self.write_metadata_btn.setEnabled(False)
-        write_group_layout.addWidget(self.write_metadata_btn)
-
-        self.save_sidecar_btn = QPushButton()
-        self.save_sidecar_btn.clicked.connect(self.save_sidecar)
-        self.save_sidecar_btn.setEnabled(False)
-        write_group_layout.addWidget(self.save_sidecar_btn)
-
-        self.write_group.setLayout(write_group_layout)
-        sidebar_layout.addWidget(self.write_group)
-
-        self.integrity_group = QGroupBox()
-        integrity_group_layout = QVBoxLayout()
-
-        self.save_checksums_btn = QPushButton()
-        self.save_checksums_btn.clicked.connect(self.save_checksums)
-        self.save_checksums_btn.setEnabled(False)
-        integrity_group_layout.addWidget(self.save_checksums_btn)
-
-        self.verify_integrity_btn = QPushButton()
-        self.verify_integrity_btn.clicked.connect(self.verify_integrity)
-        self.verify_integrity_btn.setEnabled(False)
-        integrity_group_layout.addWidget(self.verify_integrity_btn)
-
-        # Works on a whole dataset folder, not on the loaded files, so it is
-        # never disabled waiting for a load.
-        self.verify_manifest_btn = QPushButton()
-        self.verify_manifest_btn.clicked.connect(self.verify_manifest)
-        integrity_group_layout.addWidget(self.verify_manifest_btn)
-
-        self.integrity_group.setLayout(integrity_group_layout)
-        sidebar_layout.addWidget(self.integrity_group)
-
-        self.lidar_group = QGroupBox()
-        lidar_group_layout = QVBoxLayout()
-
-        self.analyze_las_btn = QPushButton()
-        self.analyze_las_btn.clicked.connect(self.analyze_las_points)
-        self.analyze_las_btn.setEnabled(False)
-        lidar_group_layout.addWidget(self.analyze_las_btn)
-
-        self.lidar_group.setLayout(lidar_group_layout)
-        self.lidar_group.setVisible(False)
-        sidebar_layout.addWidget(self.lidar_group)
-
-        self.view_group = QGroupBox()
-        view_group_layout = QVBoxLayout()
-
-        self.toggle_preview_btn = QPushButton()
-        self.toggle_preview_btn.setCheckable(True)
-        self.toggle_preview_btn.clicked.connect(self.toggle_preview_panel)
-        view_group_layout.addWidget(self.toggle_preview_btn)
-
-        self.view_group.setLayout(view_group_layout)
-        sidebar_layout.addWidget(self.view_group)
-
-        sidebar_layout.addStretch()
-        sidebar_widget.setLayout(sidebar_layout)
-        left_column_layout.addWidget(sidebar_widget)
+        self.file_list = FileListPanel()
+        self.file_list.fileSelected.connect(self.select_loaded_file)
+        self.file_list.setVisible(False)
+        left_column_layout.addWidget(self.file_list, 1)
 
         self.preview_panel = QWidget()
         preview_layout = QVBoxLayout()
@@ -530,28 +478,52 @@ class MetadataViewer(QWidget):
         preview_layout.addWidget(self.thumbnail_display)
         self.preview_panel.setLayout(preview_layout)
         left_column_layout.addWidget(self.preview_panel)
-
         left_column_layout.addStretch()
-        left_column_widget.setLayout(left_column_layout)
-        content_layout.addWidget(left_column_widget)
+        left_column_widget.setMinimumWidth(SIDEBAR_WIDTH + 10)
+        self.splitter.addWidget(left_column_widget)
 
-        # === Metadata display — tabbed view ===
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.status_strip = StatusStrip()
+        self.status_strip.flagsClicked.connect(lambda: self.tab_widget.setCurrentIndex(2))
+        self.status_strip.suggestionsClicked.connect(lambda: self.tab_widget.setCurrentIndex(1))
+        self.status_strip.missingClicked.connect(lambda: self.tab_widget.setCurrentIndex(1))
+        right_layout.addWidget(self.status_strip)
+
         self.tab_widget = QTabWidget()
 
         self.raw_metadata_display = QTextEdit()
         self.raw_metadata_display.setReadOnly(True)
         self.tab_widget.addTab(self.raw_metadata_display, "")
 
+        recommended_tab = QWidget()
+        recommended_layout = QVBoxLayout(recommended_tab)
+        recommended_layout.setContentsMargins(0, 4, 0, 0)
+        self.field_search = QLineEdit()
+        self.field_search.setClearButtonEnabled(True)
+        self.field_search.textChanged.connect(lambda _: self._render_recommended())
+        recommended_layout.addWidget(self.field_search)
         self.recommended_metadata_display = QTextEdit()
         self.recommended_metadata_display.setReadOnly(True)
-        self.tab_widget.addTab(self.recommended_metadata_display, "")
+        recommended_layout.addWidget(self.recommended_metadata_display)
+        self.tab_widget.addTab(recommended_tab, "")
 
         self.curation_display = QTextEdit()
         self.curation_display.setReadOnly(True)
         self.tab_widget.addTab(self.curation_display, "")
 
-        content_layout.addWidget(self.tab_widget)
-        layout.addLayout(content_layout)
+        right_layout.addWidget(self.tab_widget)
+        self.splitter.addWidget(right_widget)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setSizes([300, 980])
+        layout.addWidget(self.splitter, 1)
+
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
 
         self.setLayout(layout)
 
@@ -568,7 +540,42 @@ class MetadataViewer(QWidget):
         self.manifest_worker = None
         self.manifest_progress = None
 
+        self._shortcuts = [
+            QShortcut(QKeySequence("Ctrl+O"), self, activated=self.load_file),
+            QShortcut(QKeySequence("Ctrl+Shift+O"), self, activated=self.load_folder),
+            QShortcut(QKeySequence("Ctrl+E"), self, activated=lambda: self._if_enabled(self.export_json_btn, self.export_as_json)),
+            QShortcut(QKeySequence("Ctrl+Shift+E"), self, activated=lambda: self._if_enabled(self.export_csv_btn, self.export_as_csv)),
+            QShortcut(QKeySequence("Ctrl+F"), self, activated=self.focus_field_search),
+        ]
+
         self.retranslate_ui()
+        self.status_label.setText(tr("ui_status_ready"))
+
+    # === Widget helpers ===
+    def _new_action(self, handler, enabled=False):
+        action = QAction(self)
+        action.triggered.connect(lambda _checked=False: handler())
+        action.setEnabled(enabled)
+        return action
+
+    def _new_menu_button(self, actions):
+        button = QPushButton()
+        menu = QMenu(button)
+        menu.setToolTipsVisible(True)  # a disabled entry explains itself in its tooltip
+        for action in actions:
+            menu.addAction(action)
+        button.setMenu(menu)
+        return button, menu
+
+    @staticmethod
+    def _if_enabled(action, handler):
+        if action.isEnabled():
+            handler()
+
+    def focus_field_search(self):
+        self.tab_widget.setCurrentIndex(1)
+        self.field_search.setFocus()
+        self.field_search.selectAll()
 
     # === Language ===
     def on_language_changed(self, lang_code):
@@ -590,35 +597,31 @@ class MetadataViewer(QWidget):
 
         self.format_label.setText(tr("label_select_format"))
         self.app_label.setText(tr("label_select_application"))
-        self.standards_info_btn.setText(tr("btn_standards_info"))
+        self.standards_info_btn.setText("ⓘ " + tr("btn_standards_info"))
         self.standards_info_btn.setToolTip(tr("tooltip_standards_info"))
-        self.file_selector_label.setText(tr("label_select_file"))
         self.language_label.setText(tr("label_language"))
 
-        self.file_group.setTitle(tr("group_file"))
         self.load_file_btn.setText(tr("btn_load_file"))
-        self.load_file_btn.setToolTip(tr("tooltip_load_file"))
+        self.load_file_btn.setToolTip(tr("tooltip_load_file") + "  (Ctrl+O)")
         self.load_folder_btn.setText(tr("btn_load_folder"))
-        self.load_folder_btn.setToolTip(tr("tooltip_load_folder"))
-        self.load_zarr_btn.setText(tr("btn_load_zarr"))
-        self.load_zarr_btn.setToolTip(tr("tooltip_load_zarr"))
+        self.load_folder_btn.setToolTip(tr("tooltip_load_folder") + "  (Ctrl+Shift+O)")
 
-        self.export_group.setTitle(tr("group_export"))
-        self.export_json_btn.setText(tr("btn_export_json"))
+        self.export_button.setText(tr("group_export") + " ▾")
+        self.export_json_btn.setText(tr("btn_export_json") + "\tCtrl+E")
         self.export_json_btn.setToolTip(tr("tooltip_export_json"))
-        self.export_csv_btn.setText(tr("btn_export_csv"))
+        self.export_csv_btn.setText(tr("btn_export_csv") + "\tCtrl+Shift+E")
         self.export_csv_btn.setToolTip(tr("tooltip_export_csv"))
         self.export_curation_btn.setText(tr("btn_export_curation"))
         self.export_curation_btn.setToolTip(tr("tooltip_export_curation"))
         self.batch_compliance_btn.setText(tr("btn_batch_compliance"))
         self.batch_compliance_btn.setToolTip(tr("tooltip_batch_compliance"))
 
-        self.write_group.setTitle(tr("group_write"))
+        self.write_button.setText(tr("group_write") + " ▾")
         self.write_metadata_btn.setText(tr("btn_write_metadata"))
         self.save_sidecar_btn.setText(tr("btn_save_sidecar"))
         self.save_sidecar_btn.setToolTip(tr("tooltip_save_sidecar"))
 
-        self.integrity_group.setTitle(tr("group_integrity"))
+        self.integrity_button.setText(tr("group_integrity") + " ▾")
         self.save_checksums_btn.setText(tr("btn_save_checksums"))
         self.save_checksums_btn.setToolTip(tr("tooltip_save_checksums"))
         self.verify_integrity_btn.setText(tr("btn_verify_integrity"))
@@ -626,25 +629,81 @@ class MetadataViewer(QWidget):
         self.verify_manifest_btn.setText(tr("btn_verify_manifest"))
         self.verify_manifest_btn.setToolTip(tr("tooltip_verify_manifest"))
 
-        self.lidar_group.setTitle(tr("group_lidar"))
         self.analyze_las_btn.setText(tr("btn_analyze_las"))
         self.analyze_las_btn.setToolTip(tr("tooltip_analyze_las"))
 
-        self.view_group.setTitle(tr("group_view"))
+        self.view_button.setText(tr("group_view") + " ▾")
         self.toggle_preview_btn.setText(
             tr("btn_show_preview") if self.toggle_preview_btn.isChecked() else tr("btn_hide_preview")
         )
         self.toggle_preview_btn.setToolTip(tr("tooltip_toggle_preview"))
+        self.show_empty_action.setText(tr("ui_show_empty_fields"))
+        self.change_format_action.setText(tr("ui_change_format"))
 
         self.tab_widget.setTabText(0, tr("tab_raw_metadata"))
         self.tab_widget.setTabText(1, tr("tab_recommended_fields"))
         self.tab_widget.setTabText(2, tr("tab_curation"))
-        self.raw_metadata_display.setPlaceholderText(tr("placeholder_raw_metadata"))
-        self.recommended_metadata_display.setPlaceholderText(tr("placeholder_recommended_fields"))
+        self.raw_metadata_display.setPlaceholderText(tr("ui_welcome"))
+        self.recommended_metadata_display.setPlaceholderText(tr("ui_welcome"))
         self.curation_display.setPlaceholderText(tr("placeholder_curation"))
+        self.field_search.setPlaceholderText(tr("ui_search_fields"))
+
+        self.file_list.retranslate()
+        self.status_strip.retranslate()
+        self._update_detected()
 
         if not self.thumbnail_display.pixmap() or self.thumbnail_display.pixmap().isNull():
             self.thumbnail_display.setText(tr("label_no_preview"))
+
+    def _update_detected(self):
+        if self.current_display_file_path:
+            self.detected_label.setText(tr(
+                "ui_detected", format=self.format_dropdown.currentText(), context=self.app_dropdown.currentText()))
+        else:
+            self.detected_label.setText(tr("ui_detected_none"))
+
+    # === Format / context selector visibility ===
+    def _on_change_format_toggled(self, checked):
+        self._selector_manual = checked
+        self._refresh_selector_visibility()
+
+    def _refresh_selector_visibility(self):
+        self.selector_box.setVisible(self._selector_manual or self._selector_ambiguous)
+
+    # === Settings (window size, language, last folder) ===
+    def restore_settings(self, settings):
+        geometry = settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self._last_dir = settings.value("last_dir", "") or ""
+
+    def closeEvent(self, event):
+        if self.persist_settings:
+            settings = QSettings("IMetVi", "IMetVi")
+            settings.setValue("geometry", self.saveGeometry())
+            settings.setValue("language", get_language())
+            settings.setValue("last_dir", self._last_dir)
+        super().closeEvent(event)
+
+    def _remember_dir(self, path):
+        folder = path if os.path.isdir(path) else os.path.dirname(path)
+        if folder:
+            self._last_dir = folder
+
+    # === Drag and drop ===
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile()]
+        if not paths:
+            return
+        event.acceptProposedAction()
+        if len(paths) == 1:
+            self.open_path(paths[0])
+        else:
+            self.load_paths([p for p in paths if os.path.isfile(p) and get_extension(p) in ALL_EXTENSIONS])
 
     # === Thumbnail Preview ===
     def toggle_preview_panel(self, checked):
@@ -757,21 +816,52 @@ class MetadataViewer(QWidget):
         return text_report, standardized_metadata
 
     # === File and Folder Loading ===
+    def set_status(self, text):
+        self.status_label.setText(text)
+
+    def _update_actions_enabled(self):
+        enabled = bool(self.all_standardized_metadata)
+        for action in (self.export_json_btn, self.export_csv_btn, self.export_curation_btn,
+                       self.batch_compliance_btn, self.save_checksums_btn, self.verify_integrity_btn):
+            action.setEnabled(enabled)
+
+    def _show_single(self):
+        """Leaves batch mode: a single file replaces whatever batch was loaded."""
+        self.loaded_files = []
+        self.file_list.clear()
+        self.file_list.setVisible(False)
+
     def load_file(self):
         filter_str = "Images (" + " ".join(f"*{ext}" for ext in ALL_EXTENSIONS) + ")"
-        file_path, _ = QFileDialog.getOpenFileName(self, tr("dialog_select_file"), filter=filter_str)
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("dialog_select_file"), self._last_dir, filter_str)
         if file_path:
-            self.select_format_for_extension(file_path)
-            self.display_metadata(file_path, single_file=True)
+            self.open_path(file_path)
+
+    def open_path(self, path):
+        """Opens a file or a folder (the entry point for the dialogs and for drag and drop)."""
+        if os.path.isdir(path):
+            self.load_folder_path(path)
+            return
+        if not formats_for_extension(get_extension(path)):
+            self.set_status(tr("ui_status_unsupported", name=os.path.basename(path)))
+            return
+        self._remember_dir(path)
+        self.select_format_for_extension(path)
+        self._show_single()
+        self.display_metadata(path, single_file=True)
 
     def load_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_folder"))
-        if not folder_path:
-            return
+        folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_folder"), self._last_dir)
+        if folder_path:
+            self.load_folder_path(folder_path)
+
+    def load_folder_path(self, folder_path):
+        self._remember_dir(folder_path)
 
         if folder_path.lower().endswith(".zarr"):
             # the chosen folder is itself an OME-Zarr image, not a folder of images
             self.select_format_for_extension(folder_path)
+            self._show_single()
             self.display_metadata(folder_path, single_file=True)
             return
 
@@ -784,9 +874,34 @@ class MetadataViewer(QWidget):
             QMessageBox.information(self, tr("msg_no_files_found_title"), tr("msg_no_files_found_text"))
             return
 
+        self._start_batch(file_paths, os.path.basename(folder_path.rstrip("/\\")) or folder_path)
+
+    def load_paths(self, file_paths):
+        """Batch-loads several files dropped together."""
+        if file_paths:
+            self._remember_dir(file_paths[0])
+            self._start_batch(file_paths, os.path.dirname(file_paths[0]))
+
+    def _homogeneous(self, file_paths):
+        """
+        Selects the format of the first file (a folder load used to parse every file with
+        whichever format happened to be selected) and keeps only the files that format
+        handles. Returns (kept, number_skipped).
+        """
+        self.select_format_for_extension(file_paths[0])
+        fmt = FORMAT_REGISTRY.get(self.format_dropdown.currentText())
+        wanted = set(fmt["extensions"]) if fmt else set(ALL_EXTENSIONS)
+        kept = [p for p in file_paths if get_extension(p) in wanted]
+        return kept, len(file_paths) - len(kept)
+
+    def _start_batch(self, file_paths, folder_label):
+        file_paths, self._skipped_count = self._homogeneous(file_paths)
+        self._batch_label = folder_label
+
         self.loaded_files = []
         self.all_standardized_metadata = []
-        self.file_selector_dropdown.clear()
+        self.file_list.clear()
+        self.file_list.setVisible(False)
 
         selected_format = self.format_dropdown.currentText()
         selected_app = self.app_dropdown.currentText()
@@ -848,12 +963,6 @@ class MetadataViewer(QWidget):
         wanted = set(fmt["extensions"]) if fmt else set(ALL_EXTENSIONS)
         return [p for p in candidates if get_extension(p) in wanted]
 
-    def load_zarr_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, tr("dialog_select_zarr"))
-        if folder_path:
-            self.format_dropdown.setCurrentText("OME-Zarr")
-            self.display_metadata(folder_path, single_file=True)
-
     def on_folder_load_progress(self, current, total, filename):
         if self.progress_dialog is not None:
             self.progress_dialog.setLabelText(tr("progress_processing", filename=filename, current=current, total=total))
@@ -866,21 +975,19 @@ class MetadataViewer(QWidget):
 
         self.loaded_files = results
         self.all_standardized_metadata = [r[2] for r in results]
-        for file_path, _, _ in results:
-            self.file_selector_dropdown.addItem(os.path.basename(file_path))
-
-        if self.loaded_files:
-            self.file_selector_label.show()
-            self.file_selector_dropdown.show()
-            self.file_selector_dropdown.setCurrentIndex(0)
+        self.file_list.set_results(results)
+        self.file_list.setVisible(len(results) > 1)
+        if len(results) > 1:
+            self.file_list.select_index(0)
+        elif results:
             self.select_loaded_file(0)
+        self._update_actions_enabled()
 
-        self.export_json_btn.setEnabled(bool(self.loaded_files))
-        self.export_csv_btn.setEnabled(bool(self.loaded_files))
-        self.export_curation_btn.setEnabled(bool(self.loaded_files))
-        self.batch_compliance_btn.setEnabled(bool(self.loaded_files))
-        self.save_checksums_btn.setEnabled(bool(self.loaded_files))
-        self.verify_integrity_btn.setEnabled(bool(self.loaded_files))
+        count, flagged, _ = summarize(results)
+        message = tr("ui_status_loaded_folder", n=count, folder=getattr(self, "_batch_label", ""), flagged=flagged)
+        if self._skipped_count:
+            message += tr("ui_status_skipped", n=self._skipped_count)
+        self.set_status(message)
 
     def select_loaded_file(self, index):
         if 0 <= index < len(self.loaded_files):
@@ -906,11 +1013,19 @@ class MetadataViewer(QWidget):
     @staticmethod
     def _format_suggestion(sug):
         """One standards suggestion as an HTML fragment, in the active language."""
-        from html import escape
-        fr = get_language() == "FR" and sug.get("Message_fr")
-        msg = sug["Message_fr"] if fr else sug.get("Message", "")
-        return (f'<span style="color:#2471a3;">&bull; [{escape(sug.get("Standard", ""))}]</span> '
-                f'{escape(msg)}')
+        return format_suggestion(sug)
+
+    def _render_recommended(self):
+        """Rebuilds the Recommended Fields tab (also when the search box or 'show empty' changes)."""
+        if not self.current_display_metadata or not self.current_display_file_path:
+            return
+        self.recommended_metadata_display.setHtml(build_recommended_html(
+            self.current_display_metadata,
+            get_profile(self.app_dropdown.currentText()),
+            os.path.basename(self.current_display_file_path),
+            show_empty=self.show_empty_action.isChecked(),
+            filter_text=self.field_search.text(),
+        ))
 
     def render_metadata(self, file_path, text_report, standardized_metadata):
         self.current_display_file_path = file_path
@@ -923,7 +1038,7 @@ class MetadataViewer(QWidget):
         )
         self.save_sidecar_btn.setEnabled(bool(file_path))
         is_las = self.format_dropdown.currentText() == "LAS"
-        self.lidar_group.setVisible(is_las)
+        self.analyze_las_btn.setVisible(is_las)
         self.analyze_las_btn.setEnabled(is_las)
         self.update_thumbnail(file_path)
 
@@ -935,107 +1050,8 @@ class MetadataViewer(QWidget):
         self.raw_metadata_display.append(text_report)
 
         # ── Tab 2: Recommended Fields ─────────────────────────────────────────
-        self.recommended_metadata_display.clear()
-        self._reset_text_format(self.recommended_metadata_display)
-        self.recommended_metadata_display.append(f"{tr('label_file')} {fname}\n")
-
-        _CURATION_KEYS = {"_CurationFlags", "_MD5Checksum", "_StandardReference", "_MissingFields",
-                          "_Suggestions"}
         suggestions = standardized_metadata.get("_Suggestions") or []
-        active_profile = get_profile(self.app_dropdown.currentText())
-
-        missing_fields = standardized_metadata.get("_MissingFields") or []
-        if missing_fields:
-            missing_labels = ", ".join(format_label(k, active_profile) for k in missing_fields)
-            self.recommended_metadata_display.append(
-                f'<span style="color:#c0392b; font-weight:bold;">'
-                f'⚠ {tr("missing_fields_label")} {missing_labels}</span>'
-            )
-            self._reset_text_format(self.recommended_metadata_display)
-            self.recommended_metadata_display.append("")
-
-        for key, value in standardized_metadata.items():
-            if key in _CURATION_KEYS:
-                continue
-
-            display_key = format_label(key, active_profile)
-
-            if key == "Channels" and isinstance(value, list):
-                self.recommended_metadata_display.append(f"{display_key}:")
-                for idx, ch in enumerate(value, 1):
-                    name = ch.get("Name", "")
-                    exc  = ch.get("ExcitationWavelength", "")
-                    em   = ch.get("EmissionWavelength", "")
-                    exp  = ch.get("ExposureTime_sec", "")
-                    self.recommended_metadata_display.append(
-                        tr("render_channel_line", idx=idx, name=name)
-                        + (tr("render_channel_exc", v=exc) if exc else "")
-                        + (tr("render_channel_em", v=em) if em else "")
-                        + (tr("render_channel_exp", v=exp) if exp else "")
-                    )
-            elif key == "Datasets" and isinstance(value, list):
-                self.recommended_metadata_display.append(f"{display_key}:")
-                for obj in value:
-                    risk = f"  ⚠ {obj['Risk']}" if obj.get("Risk") else ""
-                    self.recommended_metadata_display.append(
-                        f"  [{obj.get('Type','?')}] {obj.get('Path','')} | "
-                        f"{tr('render_dims')} {obj.get('Dimensions','—')} | "
-                        f"{tr('render_type')} {obj.get('DataType','—')} | "
-                        f"{tr('render_compression')} {obj.get('Compression','—')}"
-                        f"{risk}"
-                    )
-            elif key == "Variables" and isinstance(value, list):
-                # NetCDF/CF variable inventory. standard_name is the CF
-                # controlled-vocabulary term that makes a variable
-                # machine-interpretable across tools (FAIR: Interoperable) —
-                # flag variables that lack one so a curator can spot
-                # non-CF-compliant fields at a glance.
-                self.recommended_metadata_display.append(f"{display_key}:")
-                for v in value:
-                    name = v.get("Name", "")
-                    std_name = v.get("StandardName", "")
-                    units = v.get("Units", "")
-                    long_name = v.get("LongName", "")
-                    shape = v.get("Shape", "")
-
-                    line = f"  - {name}"
-                    if std_name:
-                        line += f"  [{std_name}]"
-                    else:
-                        line += '  <span style="color:#e67e22;">⚠ ' + tr("render_no_standard_name") + '</span>'
-                    if units:
-                        line += f"  ({units})"
-                    if long_name:
-                        line += f"  — {long_name}"
-                    if shape:
-                        line += f"  {tr('render_shape')} {shape}"
-                    self.recommended_metadata_display.append(line)
-                    if not std_name:
-                        self._reset_text_format(self.recommended_metadata_display)
-            elif key == "CRS_WKT" and value:
-                # Raw WKT is a single unbroken line — often 1000+ characters
-                # of nested definitions (datum, ellipsoid, projection params,
-                # ...) that's unreadable wrapped mid-word at the panel width.
-                # Indent it by nesting depth for display only; the value
-                # exported to JSON/CSV/sidecar stays the original single line.
-                self.recommended_metadata_display.append(f"{display_key}:")
-                for wkt_line in pretty_wkt(value).splitlines():
-                    self.recommended_metadata_display.append(f"  {wkt_line}")
-            else:
-                if isinstance(value, list) and all(isinstance(v, str) for v in value):
-                    # Plain string lists (e.g. CoordinateVariables, GeoTIFF's
-                    # BandDescriptions) — join instead of dumping a Python
-                    # list repr with quotes/brackets.
-                    self.recommended_metadata_display.append(f"{display_key}:  {', '.join(value)}")
-                else:
-                    self.recommended_metadata_display.append(f"{display_key}:  {value}")
-
-        if suggestions:
-            self.recommended_metadata_display.append("")
-            self.recommended_metadata_display.append(f"<b>{tr('suggestions_title')}</b>")
-            for sug in suggestions:
-                self.recommended_metadata_display.append(self._format_suggestion(sug))
-            self._reset_text_format(self.recommended_metadata_display)
+        self._render_recommended()
 
         # ── Tab 3: Curation ───────────────────────────────────────────────────
         self.curation_display.clear()
@@ -1114,6 +1130,10 @@ class MetadataViewer(QWidget):
 
         self.curation_display.setHtml(html)
 
+        self.status_strip.set_state((len(file_flags(standardized_metadata)), len(suggestions),
+                                     len(standardized_metadata.get("_MissingFields") or [])))
+        self._update_detected()
+
     # === Metadata Display ===
     def display_metadata(self, file_path, single_file=False):
         self.last_standardized_metadata = None
@@ -1128,24 +1148,24 @@ class MetadataViewer(QWidget):
             self.write_metadata_btn.setEnabled(False)
             self.write_metadata_btn.setToolTip("")
             self.save_sidecar_btn.setEnabled(False)
-            self.lidar_group.setVisible(False)
+            self.analyze_las_btn.setVisible(False)
             self.analyze_las_btn.setEnabled(False)
+            self.status_strip.set_state(None)
+            self._update_detected()
             self.update_thumbnail(None)
             self.raw_metadata_display.clear()
             self.recommended_metadata_display.clear()
             self.raw_metadata_display.append(f"{tr('label_file')} {os.path.basename(file_path)}\n")
             self.raw_metadata_display.append(tr("text_error_prefix", error=str(e)))
             self.recommended_metadata_display.append(tr("text_metadata_extraction_failed"))
+            self.set_status(tr("ui_status_failed", name=os.path.basename(file_path)))
 
         if single_file and self.last_standardized_metadata:
             self.all_standardized_metadata = [self.last_standardized_metadata]
 
-        self.export_json_btn.setEnabled(bool(self.all_standardized_metadata))
-        self.export_csv_btn.setEnabled(bool(self.all_standardized_metadata))
-        self.export_curation_btn.setEnabled(bool(self.all_standardized_metadata))
-        self.batch_compliance_btn.setEnabled(bool(self.all_standardized_metadata))
-        self.save_checksums_btn.setEnabled(bool(self.all_standardized_metadata))
-        self.verify_integrity_btn.setEnabled(bool(self.all_standardized_metadata))
+        self._update_actions_enabled()
+        if single_file and self.last_standardized_metadata:
+            self.set_status(tr("ui_status_loaded_file", name=os.path.basename(file_path)))
 
     # === Metadata Writing ===
     def open_metadata_editor(self, metadata):
@@ -1753,7 +1773,11 @@ class MetadataViewer(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    settings = QSettings("IMetVi", "IMetVi")
+    set_language(settings.value("language", "EN"))
     viewer = MetadataViewer()
+    viewer.persist_settings = True
+    viewer.restore_settings(settings)
     viewer.show()
     sys.exit(app.exec_())
 

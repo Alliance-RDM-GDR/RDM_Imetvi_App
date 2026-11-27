@@ -100,24 +100,41 @@ caught at test time, not a silent English fallback in the French UI.
 
 ### UI layout
 
-`MetadataViewer.__init__()` builds three regions top to bottom/left to
-right: a top row of format/context selectors, a left column, and the
-three-tab metadata display filling the rest. The left column
-(`left_column_widget`) stacks two pieces vertically: the action sidebar
-(`QGroupBox` sections — File, Export, Write-back, Integrity, View — each
-holding the buttons for that concern instead of one long horizontal row)
-on top, and the collapsible thumbnail preview panel below it. Buttons are
-grouped by *what they act on* (a loaded file's export vs. its write-back
-vs. its integrity record), not by when they were added — a new action
-should join an existing group if one fits before a new one is created.
+`MetadataViewer.__init__()` (in `main.py`, wiring only) builds, top to
+bottom: a **toolbar**, a one-line **status strip** and a horizontal
+**splitter**, with a **status bar** at the bottom.
 
-The sidebar is fixed at 260px, wider than English button text strictly
-needs, because translated labels routinely run longer — French labels
-like "Écrire les métadonnées dans le fichier" or "Enregistrer les sommes
-de contrôle" were clipped at the previous 200px width. Stacking the
-preview below the sidebar (rather than beside it, as originally laid
-out) freed the width to grow without competing with the preview panel or
-the tab area for horizontal space.
+- *Toolbar:* **Load File**, **Load Folder**, then menu buttons **Export**
+  (JSON / CSV / curation report / batch compliance), **Write-back**,
+  **Integrity** (save / verify checksums) and **View** (preview, show empty
+  fields, change format / context). Menu entries are `QAction`s, so they keep the
+  attribute names the rest of the code already used. Disabled entries carry
+  a tooltip saying what is missing (for example "load a file first").
+- *Format and context* drop-downs are filled in automatically from the file
+  extension. They are hidden when only one choice exists and shown only when
+  the extension is ambiguous (TIFF / GeoTIFF / OME-TIFF) — a small label
+  shows what was detected.
+- *Splitter:* the left side is the batch **file list** (hidden for a single
+  file) with a thumbnail preview below it; the right side holds the three
+  metadata tabs. Sizes, language and last folder persist through
+  `QSettings`.
+- *Status strip:* counts of curation flags, standards suggestions and missing
+  required fields for the displayed file; each count is a button that jumps
+  to the tab with the details. Glyphs (✔ ⚠ ℹ ✖) accompany every colour.
+- Files or folders can be dropped on the window. `Ctrl+O`, `Ctrl+Shift+O`,
+  `Ctrl+E` / `Ctrl+Shift+E` (export JSON / CSV) and `Ctrl+F` (field search) are bound.
+
+The widgets live in the `ui/` package so `main.py` stays thin:
+
+| Module | Contents |
+|---|---|
+| `ui/file_list.py` | `FileListPanel` (status glyph, name, flag count; text filter and "show only…" filter), plus `file_flags`, `file_missing`, `summarize` |
+| `ui/status_strip.py` | `StatusStrip` |
+| `ui/fields_view.py` | `build_recommended_html()` — suggestions first, then a field table, search, hide-empty, missing-required markers |
+
+A folder load picks the format of the first file and keeps only files of that
+format (the number skipped is reported in the status bar), instead of parsing
+a mixed folder with whatever format was selected.
 
 ---
 
@@ -327,7 +344,7 @@ Added for the FRDR 1828 deposit (mouse MRI in BIDS + light-sheet OME-Zarr).
 - **Batch loading.** *Load Folder* on a BIDS root (it holds
   `dataset_description.json`) searches recursively for the selected format's
   files; a `*.zarr` folder counts as one image and is never descended into.
-  *Load OME-Zarr Folder* opens a single `.zarr`.
+  Choosing a `*.zarr` folder with *Load Folder* opens it as a single image.
 - **Sidecar export.** `sidecar_path_for()` writes `<stem>.imetvi.json` for
   `.nii.gz`/`.ome.zarr`, because `<stem>.json` is the dataset's own BIDS
   sidecar and must not be overwritten.

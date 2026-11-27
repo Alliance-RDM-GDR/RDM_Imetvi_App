@@ -63,7 +63,11 @@ organized and [`UPDATES.md`](UPDATES.md) for a chronological changelog.
   summary, the metadata field labels in the Recommended Fields tab, and
   the text of the Metadata Standard Info dialog. (Values read from the
   file itself, and exported JSON/CSV keys, are never translated.)
-- 💬 **Tooltips on every sidebar action** — hover any button to see what
+- 🗂️ **Batch file list** — folders load into a filterable list with a ✔/⚠
+  status per file; a status strip counts curation flags, suggestions and
+  missing required fields and jumps to the details. Drag files or folders
+  onto the window; the window remembers its size, language and last folder.
+- 💬 **Tooltips on every toolbar action** — hover any button to see what
   it does before clicking it.
 - 🌳 **Readable CRS WKT** — a CRS's WKT definition (often 1000+ characters
   on one line) is shown indented by nesting depth in the Recommended

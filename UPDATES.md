@@ -6,6 +6,47 @@ listed newest first. For how the pieces fit together, see
 
 ---
 
+## 2026-11-29 — Interface reorganisation
+
+Layout and workflow changes only; no parser or standardizer behaviour changed.
+
+- **Toolbar replaces the sidebar.** *Load File* and *Load Folder* stay as
+  buttons; export, write-back, integrity and view actions moved into four
+  menus. Disabled actions explain why in a tooltip.
+- **Batch file list.** A loaded folder appears in a side list (✔ / ⚠, file
+  name, flag count) with a name filter and a "show only…" filter (flagged,
+  clean, missing required fields, or one specific flag). It replaces the
+  file drop-down, which did not cope with hundreds of files. Column sorting
+  is off until a header is clicked, so files keep their load order.
+- **Status strip** above the tabs: flags / suggestions / missing counts,
+  clickable to jump to the Curation or Recommended tab.
+- **Recommended Fields** rebuilt: suggestions first, then a table of fields;
+  search box (`Ctrl+F`), *Show empty fields* toggle, and missing required
+  fields marked in place.
+- **Auto-detected format and context.** The drop-downs are hidden unless the
+  extension is ambiguous; a label shows what was detected.
+- **Folder loads are single-format.** The first file picks the format and
+  other files are skipped (count shown in the status bar). Loading a single
+  file leaves batch mode.
+- **Removed** the *Load OME-Zarr Folder* button: *Load Folder* now accepts a
+  `.zarr` folder directly.
+- Drag and drop of files and folders, status bar messages, shortcuts
+  (`Ctrl+O`, `Ctrl+Shift+O`, `Ctrl+E`, `Ctrl+Shift+E`, `Ctrl+F`), and `QSettings` persistence of
+  window size, language and last folder.
+- Accessibility: status uses a glyph as well as a colour.
+- Code: new `ui/` package (`file_list.py`, `status_strip.py`,
+  `fields_view.py`); about 30 new EN/FR `ui_*` strings; `main.py` shrank
+  accordingly.
+- Tests: `tests/test_ui_widgets.py` (6 new, 379 total passing).
+- Screenshot regenerated.
+
+Not done: collapsible grouped sections in Recommended Fields, a non-modal
+progress indicator in the status bar (batch loading still uses
+`QProgressDialog`), click-to-enlarge preview, and a HiDPI / screen-reader
+audit.
+
+---
+
 ## 2026-11-28 — Shapefile and GeoJSON support
 
 Driven by FRDR deposit 1811 (a study-area polygon published twice, as
